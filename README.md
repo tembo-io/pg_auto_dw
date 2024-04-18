@@ -27,6 +27,6 @@ An auto data warehouse extension for Postgres
 * I add a new table
 * I run  `auto_dw.evaluate()` and see the new table, and it’s good
 * I run `auto_dw.go()` and it’s now processing new table too
-* I don’t want some tables warehoused, I run `auto_dw.omit(table, table)`
+* I don’t want some tables warehoused, I run `auto_dw.omit([table, table])`
 * I run `auto_dw.status()` to see those tables are no longer part of the system
 * I show the auto_dw dashboard in Tembo Cloud [blocked currently, but let's get @ChuckHend working on this capability]
