@@ -19,14 +19,14 @@ An auto data warehouse extension for Postgres
 ## Demo Script
 
 * I install the extension in my existing postgres cluster
-* I run function auto_dw.evaluate() - confidence score for each table + field
+* I run function `auto_dw.evaluate()` - confidence score for each table + field
     * I see one table has a field that needs help
 * I edit a table to have a description for a problem field
-* I run auto_dw.evaluate(table) - and I see the confidence for that table is fixed, green light
-* I run auto_dw.go() and it sets up everything, new schemas, jobs to keep them updated, etc.
+* I run `auto_dw.evaluate(table)` - and I see the confidence for that table is fixed, green light
+* I run `auto_dw.go()` and it sets up everything, new schemas, jobs to keep them updated, etc.
 * I add a new table
-* I run  auto_dw.evaluate() and see the new table, and it’s good
-* I run auto_dw.go() and it’s now processing new table too
-* I don’t want some tables warehoused, I run auto_dw.omit(table, table) 
-* I run auto_dw.status() to see those tables are no longer part of the system
-* I show the auto_dw dashboard in Tembo Cloud
+* I run  `auto_dw.evaluate()` and see the new table, and it’s good
+* I run `auto_dw.go()` and it’s now processing new table too
+* I don’t want some tables warehoused, I run `auto_dw.omit(table, table)`
+* I run `auto_dw.status()` to see those tables are no longer part of the system
+* I show the auto_dw dashboard in Tembo Cloud [blocked currently, but let's get @ChuckHend working on this capability]
