@@ -8,7 +8,7 @@ An auto data warehouse extension for Postgres
     * Call attention/scrutiny to the work - release every week or two with blog/tweet calling attention to your work
 * Documentation-driven development
     * While you’re writing code, write docs on how the product works
-* Demo-driven development (recursive, go back to step 0 as needed)
+* Demo-driven development (recursive, go back to step 1 as needed. It's OK to get things wrong and iterate.)
     * Step 1 - write demo script
     * Step 2 - document vision + demo script in public README
     * Step 3 - mock up demo (fake UX)
