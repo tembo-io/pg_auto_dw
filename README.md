@@ -5,7 +5,7 @@ An auto data warehouse extension for Postgres
 
 * Build in public
     * Public repo
-    * Call attention/scrutiny to the work - blog every week or two
+    * Call attention/scrutiny to the work - release every week or two with blog/tweet calling attention to your work
 * Documentation-driven development
     * While you’re writing code, write docs on how the product works
 * Demo-driven development (recursive, go back to step 0 as needed)
