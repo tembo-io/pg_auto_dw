@@ -19,7 +19,7 @@ From [@ryw](https://github.com/ryw) 4-18-24:
     * Step 2 - document vision + demo script in public README
     * Step 3 - mock up demo (fake UX)
     * Step 4 - make fake demo real (narrow use case)
-    * Step 5 - ship v24.1 (calver) that can do a little more than just the pre-canned demo
+    * Step 5 - ship v0.1 (semver) that can do a little more than just the pre-canned demo
         * Ship product + demo video + documentation
 
 ## Demo Script
