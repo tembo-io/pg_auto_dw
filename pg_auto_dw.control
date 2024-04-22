@@ -1,0 +1,5 @@
+comment = 'pg_auto_dw:  Created by pgrx'
+default_version = '@CARGO_VERSION@'
+module_pathname = '$libdir/pg_auto_dw'
+relocatable = false
+superuser = true
