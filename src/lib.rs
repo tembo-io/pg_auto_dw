@@ -1,68 +1,10 @@
-use pgrx::prelude::*;
+pub use pgrx::prelude::*;
 // use serde::{Deserialize, Serialize};
 // use pgrx::{info, spi, IntoDatum};
 
 pgrx::pg_module_magic!();
 
-// Creating Extension TABLES ** Purely ** as a Hello World + Example.
-
-// TABLE_STATUS
-// Used pulls table in from the information schema for processing, starting status new.
-extension_sql!( r#"
-
-CREATE TABLE table_status (
-    id SERIAL PRIMARY KEY,
-    schema_name VARCHAR(255) NOT NULL DEFAULT 'public',
-    table_name VARCHAR(255) NOT NULL,
-    status_text TEXT NOT NULL DEFAULT 'new' CHECK (status_text IN ('new', 'changed', 'ready', 'processed')),
-    usage_indicator BOOLEAN NOT NULL DEFAULT TRUE
-);
-"#,
-    name = "create_table_status_table",
-);
-
-// TABLE_COLUMN_CAT
-// Used to categorize attribute either manually or by LLM.
-// If overridden then confidence_level = na and is_overridden = true.
-extension_sql!( r#"
-CREATE TABLE table_column_cat (
-    id SERIAL PRIMARY KEY,
-    schema_name VARCHAR(255) NOT NULL DEFAULT 'public',
-    table_name VARCHAR(255) NOT NULL,
-    column_name VARCHAR(255) NOT NULL,
-    column_cat VARCHAR(255) NOT NULL DEFAULT 'na',
-    confidence_level VARCHAR(255) NOT NULL DEFAULT 'na' CHECK (confidence_level IN ('high', 'medium', 'low', 'na')),
-    is_overridden BOOLEAN NOT NULL DEFAULT FALSE
-);
-"#,
-    name = "create_table_column_cat_stats_table",
-);
-// - METADATA
-extension_sql!( r#"
-
-CREATE TABLE metadata (
-    id SERIAL PRIMARY KEY
-);
-"#,
-    name = "create_metadata_table",
-);
-
-// Creating Sample TABLES
-// - CUSTOMER
-extension_sql!( r#"
-CREATE TABLE public.customers (
-    customer_id SERIAL PRIMARY KEY,
-    first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(15),
-    date_of_birth DATE,
-    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-"#,
-    name = "create_example_tables",
-);
+mod setup;
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {
@@ -70,39 +12,26 @@ fn hello_pg_auto_dw() -> &'static str {
 }
 
 #[pg_extern]
-fn list_days_of_week() -> &'static str {
-    "Mon, Tue, Wed, Thur, Fri, Sat, Sun"
-}
-
-#[pg_extern]
-fn sum_vec(input: Vec<Option<i32>>) -> i32 {
-
-    let mut sum: i32 = 0;
-    for i in input {
-        if let Some(a) = i {
-            sum += a;
-        };    
-    }
-
-    sum
-}
-
-#[pg_extern]
-fn employees() -> TableIterator<'static,
+fn series_hello_table() -> Result<
+    TableIterator<
+        'static,
         (
-            name!(id, i64),
-            name!(dept_code, String),
-            name!(full_text, &'static str)
+            name!(id, Result<Option<i32>, pgrx::spi::Error>),
+            name!(greeting, Result<Option<String>, pgrx::spi::Error>)
         )
+    >,
+    spi::Error,
 > {
+    let query = "SELECT 1 as id, 'hello' as greeting FROM generate_series(1, 10)";
     info!("Employee Table");
-    TableIterator::new(vec![
-        (42, "ARQ".into(), "John Hammond"),
-        (87, "EGA".into(), "Mary Kinson"),
-        (3,  "BLA".into(), "Perry Johnson"),
-    ])
+    Spi::connect(|client| {
+        Ok(client
+            .select(query, None, None)?
+            .map(|row| (row["id"].value(), row["greeting"].value()))
+            .collect::<Vec<_>>())
+    })
+    .map(TableIterator::new)
 }
-
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
