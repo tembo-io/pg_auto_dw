@@ -1,6 +1,4 @@
 pub use pgrx::prelude::*;
-// use serde::{Deserialize, Serialize};
-// use pgrx::{info, spi, IntoDatum};
 
 pgrx::pg_module_magic!();
 
@@ -12,22 +10,99 @@ fn hello_pg_auto_dw() -> &'static str {
 }
 
 #[pg_extern]
-fn series_hello_table() -> Result<
+fn evaluate() -> Result<
     TableIterator<
         'static,
         (
-            name!(id, Result<Option<i32>, pgrx::spi::Error>),
-            name!(greeting, Result<Option<String>, pgrx::spi::Error>)
+            name!(schema_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(table_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(column_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(column_cat, Result<Option<String>, pgrx::spi::Error>),
+            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
+            name!(is_overridden, Result<Option<bool>, pgrx::spi::Error>)
         )
     >,
     spi::Error,
 > {
-    let query = "SELECT 1 as id, 'hello' as greeting FROM generate_series(1, 10)";
-    info!("Employee Table");
+    let schema = "public";
+    // let table = "customer";
+
+    let query_string = format!(r#"
+        SELECT schema_name, 
+            table_name, 
+            column_name, 
+            column_cat, 
+            confidence_level, 
+            is_overridden 
+        FROM auto_dw.table_column_cat
+        WHERE 
+            schema_name = '{}'
+        "#, schema);
+    
+    let query: &str = query_string.as_str();
+
+    info!("Evaluation of TABLE customer");
     Spi::connect(|client| {
         Ok(client
             .select(query, None, None)?
-            .map(|row| (row["id"].value(), row["greeting"].value()))
+            .map(|row| (
+                row["schema_name"].value(), 
+                row["table_name"].value(), 
+                row["column_name"].value(),
+                row["column_cat"].value(),
+                row["confidence_level"].value(),
+                row["is_overridden"].value())
+            )
+            .collect::<Vec<_>>())
+    })
+    .map(TableIterator::new)
+}
+
+#[pg_extern]
+fn evaluate_table(table: &str) -> Result<
+    TableIterator<
+        'static,
+        (
+            name!(schema_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(table_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(column_name, Result<Option<String>, pgrx::spi::Error>),
+            name!(column_cat, Result<Option<String>, pgrx::spi::Error>),
+            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
+            name!(is_overridden, Result<Option<bool>, pgrx::spi::Error>)
+        )
+    >,
+    spi::Error,
+> {
+    let schema = "public";
+    // let table = "customer";
+
+    let query_string = format!(r#"
+        SELECT schema_name, 
+            table_name, 
+            column_name, 
+            column_cat, 
+            confidence_level, 
+            is_overridden 
+        FROM auto_dw.table_column_cat
+        WHERE 
+            schema_name = '{}' AND 
+            table_name = '{}'
+        "#, schema, table);
+    
+    let query: &str = query_string.as_str();
+
+    info!("Evaluation of TABLE customer");
+    Spi::connect(|client| {
+        Ok(client
+            .select(query, None, None)?
+            .map(|row| (
+                row["schema_name"].value(), 
+                row["table_name"].value(), 
+                row["column_name"].value(),
+                row["column_cat"].value(),
+                row["confidence_level"].value(),
+                row["is_overridden"].value())
+            )
             .collect::<Vec<_>>())
     })
     .map(TableIterator::new)
