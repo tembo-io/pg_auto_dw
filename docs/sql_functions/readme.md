@@ -6,4 +6,4 @@
 - [`source_include(object_pattern)`](source_include.md)
 - [`source_exclude(object_pattern)`](source_exclude.md)
 - [`update_context(object, context)`](update_context.md)
-- [`go(Flag, Status)`](go.md)
+- [`go(flag, status)`](go.md)
