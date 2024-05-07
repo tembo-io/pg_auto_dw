@@ -1,5 +1,5 @@
 ## Categories:
-**Interactive**
+**[SQL Function - Informative](readme.md##interactive-functions)**
 
 # SOURCE_EXCLUDE <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
