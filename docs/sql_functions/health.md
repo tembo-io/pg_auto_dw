@@ -1,5 +1,5 @@
 ## Categories:
-**[SQL Function - Informative](../readme.md#informative-functions)**
+**[SQL Function - Informative](readme.md#informative-functions)**
 
 # HEALTH <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
