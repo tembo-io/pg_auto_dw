@@ -1,7 +1,7 @@
-# pg_auto_dw
-An auto data warehouse extension for Postgres
+# PG_AUTO_DW
+[Open-source](LICENSE) PostgreSQL Extension for Automated Data Warehouse Creation
 
-## Why?
+## History
 
 From [@ryw](https://github.com/ryw) 4-18-24:
 
