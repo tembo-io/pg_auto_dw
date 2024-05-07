@@ -1,4 +1,5 @@
-## SQL Function Documentation
+## SQL Function Documentation 
+![Status](https://img.shields.io/badge/status-draft-yellow)
 
 The following SQL functions provide the primary modality for interacting with the extension PG_AUTO_DW. Functions are broken into two categories: informative and interactive. Interactive functions can change the data warehouse (DW).
 
