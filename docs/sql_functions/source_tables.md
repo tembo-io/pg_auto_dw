@@ -1,5 +1,5 @@
 ## Categories:
-**Informative**
+**[SQL Function - Informative](readme.md#informative-functions)**
 
 # SOURCE_TABLES <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
