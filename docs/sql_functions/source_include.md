@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# SOURCE_TABLES
+# SOURCE_INCLUDE
 
 - Adds objects to the DW automation queue.
 - Returns a table indicating objects that have been added to the DW automation queue. 
