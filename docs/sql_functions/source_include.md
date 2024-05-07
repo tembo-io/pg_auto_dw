@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# SOURCE_INCLUDE
+# SOURCE_INCLUDE <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
 - Adds objects to the DW automation queue.
 - Returns a table indicating objects that have been added to the DW automation queue. 
