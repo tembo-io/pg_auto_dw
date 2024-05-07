@@ -7,7 +7,7 @@
 - Understand DW Health
 - Support Data Governance
 
-All these capabilities will be delivered through a small set of intuitive functions.
+All these capabilities will be delivered through a [small set of intuitive functions](../sql_functions/readme.md).
 
 ***Script 1:***
 - Install Extension
