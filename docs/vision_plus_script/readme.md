@@ -9,6 +9,6 @@
 
 All these capabilities will be delivered through a [small set of intuitive functions](../sql_functions/readme.md).
 
-***Script 1:***
-- Install Extension
-- Build Data Warehouse
+***Script 1:*** We want to make building a data warehouse easy.  And if the source tables are structured well and appropriately named, it should take two steps. 
+1) Install Extension
+2) Build Data Warehouse
