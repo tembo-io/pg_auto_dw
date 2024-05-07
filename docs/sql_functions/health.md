@@ -1,7 +1,7 @@
 ## Categories:
 **Informative**
 
-# HEALTH
+# HEALTH <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
 Returns a table indicating the health of all DW automations.
 
