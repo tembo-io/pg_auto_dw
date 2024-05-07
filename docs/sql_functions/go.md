@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# GO
+# GO <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 Initiates data warehouse builds and initiates dataflows.
 
 ## Syntax
