@@ -13,4 +13,4 @@ All these capabilities will be delivered through a [small set of intuitive funct
 1) Install Extension
 2) Build Data Warehouse
 
-![User Story 1](PG_AUTO_DW%20-%20Visualized%20-%20Visualized%20Demo%20Script%200.0.1%20-%20User%20Story%201.png)
+![User Story 1](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_1.png)
