@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# SOURCE_EXCLUDE
+# SOURCE_EXCLUDE <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
 - Removes objects from the DW automation queue.
 - Returns a table indicating objects that have been removed from the DW automation queue. 
