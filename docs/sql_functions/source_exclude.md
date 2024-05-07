@@ -21,11 +21,12 @@ All objects in the PUBLIC SCHEMA have been added by default.  To remove SCHEMA P
 -- Remove PUBLIC SCHEMA and associated objects from the queue.
 SELECT * FROM auto_dw.source_exclude('PUBLIC');
 ```
-
-Remove COLUMN from TABLE MARKETING.PROSPECTS.  
+<br>
+ 
+Remove COLUMN from TABLE MARKETING.PROSPECTS
 ```sql
 -- Remove attribute LAST_REACHED_TS 
 SELECT * FROM auto_dw.source_exclude('marketing.prospects.last_reached_ts');
 ```
-Note: If automations warehoused this column, automations will not remove the associated column or data. 
+**Note:** If automations warehoused this column, automations will not remove the associated column or data. 
 
