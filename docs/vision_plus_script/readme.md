@@ -12,3 +12,5 @@ All these capabilities will be delivered through a [small set of intuitive funct
 ***Script 1:*** We want to make building a data warehouse easy.  And if the source tables are structured well and appropriately named, it should take two steps. 
 1) Install Extension
 2) Build Data Warehouse
+
+![User Story 1](PG_AUTO_DW%20-%20Visualized%20-%20Visualized%20Demo%20Script%200.0.1%20-%20User%20Story%201.png)
