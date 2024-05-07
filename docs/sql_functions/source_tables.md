@@ -1,7 +1,7 @@
 ## Categories:
 **Informative**
 
-# SOURCE_TABLES
+# SOURCE_TABLES <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
 Returns a table indicating the status of all tables included for DW automation.
 
