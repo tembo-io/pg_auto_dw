@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# SOURCE_TABLES
+# SOURCE_EXCLUDE
 
 - Removes objects from the DW automation queue.
 - Returns a table indicating objects that have been removed from the DW automation queue. 
