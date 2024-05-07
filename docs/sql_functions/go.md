@@ -1,5 +1,5 @@
 ## Categories:
-**Interactive**
+**[SQL Function - Informative](readme.md##interactive-functions)**
 
 # GO <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 Initiates data warehouse builds and initiates dataflows.
