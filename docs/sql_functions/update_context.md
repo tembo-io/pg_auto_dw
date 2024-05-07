@@ -1,5 +1,5 @@
 ## Categories:
-**Interactive**
+**[SQL Function - Informative](readme.md##interactive-functions)**
 
 # UPDATE_CONTEXT <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 Adds context to objects for DW automation processes.
