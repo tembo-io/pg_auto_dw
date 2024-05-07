@@ -7,7 +7,7 @@ The following SQL functions provide the primary modality for interacting with th
 These functions do not affect the database.
 |  Availability | Function | Purpose |
 |--------------|---------------------------------------|-----------------------------------------------------------------------|
-| ![Proposal Version](https://img.shields.io/badge/proposal-0.0.2-blue) | [`health()`](health.md) | Understand DW health. |
+| ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`health()`](health.md) | Understand DW health. |
 | ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`source_tables()`](source_tables.md) | Understand the status of all tables included for DW automation. |
 | ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`source_columns()`](source_columns.md)| Understand the status of all table columns included for DW automation. |
 
@@ -17,5 +17,5 @@ These functions can only effect the data warehouse portion of the database.
 |--------------|---------------------------------------|-----------------------------------------------------------------------|
 | ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`source_include(object_pattern)`](source_include.md) | Add source objects for DW automation. |
 | ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`source_exclude(object_pattern)`](source_exclude.md) | Remove source objects for DW automation. |
-| ![Proposal Version](https://img.shields.io/badge/proposal-0.0.2-blue) | [`update_context(object, context)`](update_context.md) | Provide information to facilitate DW automation. |
+| ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`update_context(object, context)`](update_context.md) | Provide information to facilitate DW automation. |
 | ![Proposal Version](https://img.shields.io/badge/proposal-0.0.1-blue) | [`go(flag, status)`](go.md) | Initiates DW builds and dataflows. |
