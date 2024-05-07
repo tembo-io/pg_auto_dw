@@ -1,7 +1,7 @@
 ## Categories:
 **Informative**
 
-# SOURCE_COLUMNS
+# SOURCE_COLUMNS <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 
 Returns a table indicating the status of all columns included for DW automation.
 
