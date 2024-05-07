@@ -1,4 +1,4 @@
 ## Doc
-Documentation on various areas of pg_auto_dw.
+Documentation on various areas of PG_AUTO_DW.
 
 - [SQL Functions](sql_functions/readme.md)
