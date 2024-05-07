@@ -1,7 +1,7 @@
 ## Categories:
 **Interactive**
 
-# UPDATE_CONTEXT
+# UPDATE_CONTEXT <br> ![Status](https://img.shields.io/badge/status-draft-yellow)
 Adds context to objects for DW automation processes.
 
 ## Syntax
