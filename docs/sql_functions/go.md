@@ -10,7 +10,7 @@ go(<flag>, <status>)
 ```
 
 ## Usage Notes
-Use this function build an entire data warehouse or push data from a single table into the built dw tables.
+Use this function to build an entire data warehouse or push data from a single table into the built dw tables.
 
 ## Examples
 
