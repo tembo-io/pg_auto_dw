@@ -16,26 +16,21 @@ Use this function build an entire data warehouse or push data from a single tabl
 
 Build a Data Warehouse
 ```sql
--- Builds a DW for all source tables that are ready to deploy.
+-- Builds a DW for all source tables that are ready-to-deploy.
 SELECT auto_dw.go('Build', 'RTD');
 ```
 
 <br>
 
+Perform a Dry Run
 ```sql
--- Build, Test, and Rollback DW automation for all source tables that are ready to deploy.
-SELECT auto_dw.go('Build', 'RTD');
+-- Build, Test, and Rollback DW automation for all source tables that are ready-to-deploy.
+SELECT auto_dw.go('DryRun', 'RTD');
 ```
 
 <br>
 
-```sql
--- Build, Test, and Rollback DW automation for all source tables that are ready to deploy.
-SELECT auto_dw.go('Build', 'RTD');
-```
-
-<br>
-
+Push data from a table.
 ```sql
 -- Push Source TABLE MARKETING.PROSPECTS data to the DW.
 SELECT auto_dw.go('Push-Table', 'marketing.prospects');
