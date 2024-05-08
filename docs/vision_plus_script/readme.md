@@ -14,7 +14,7 @@ All these capabilities will be delivered through a [small set of intuitive funct
 2) Build Data Warehouse
 ![User Story 1](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_1.png)
 
-**Script 2:** Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as one table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew that the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
+**Script 2:** Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
 1) Identify a Skipped Table
 2) Identify the Root Cause 
 3) Decide to Institute Some Data Governance Best Practices
