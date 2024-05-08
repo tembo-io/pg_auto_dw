@@ -18,4 +18,4 @@ All these capabilities will be delivered through a [small set of intuitive funct
 1) Identify a Skipped Table
 2) Identify the Root Cause 
 3) Decide to Institute Some Data Governance Best Practices
-![User Story 1](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_1.png)
+![User Story 2](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_2.png)
