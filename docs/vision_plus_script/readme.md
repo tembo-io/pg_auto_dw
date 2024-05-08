@@ -21,3 +21,4 @@ All these capabilities will be delivered through a [small set of intuitive funct
 ![User Story 2](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_2.png)
 
 **Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths. 
+![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
