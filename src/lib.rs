@@ -16,6 +16,14 @@ fn build_public_hub_seller() -> &'static str {
     "Seller hub and sat created."
 }
 
+#[pg_extern]
+fn go(flag: &str, status: &str) -> &'static str {
+    let _ = flag;
+    let _ = status;
+    _ = Spi::run(queries::SELLER_DV);
+    queries::GO_OUTPUT
+}
+
 
 #[pg_extern]
 fn evaluate() -> Result<

@@ -124,3 +124,21 @@ pub const SELLER_DV: &str = r#"
     FROM new_stg_data
     ; 
     "#;
+
+pub const GO_OUTPUT: &str = r#"
+    Build ID: df6fdea1-10c3-474c-ae62-e63def80bb0b
+
+    Data warehouse tables are currently being built.
+
+    If you need to check the status of the data warehouse, please issue the following command:
+
+    // SELECT * FROM auto_dw.health();
+
+    Alert: One or more tables lack data warehouse (DW) schedule. You have the option to either manually push these tables or add a schedule to their context.
+
+    Example - Manual Push:
+    // SELECT auto_dw.go('Push-Table', 'PUBLIC.FOO');
+
+    Example - Adding a 4 AM Daily Schedule to TABLE FOO's Context:
+    // SELECT auto_dw.update_context('public.foo', '{"cron": "0 4 * * *"}');
+    "#;
