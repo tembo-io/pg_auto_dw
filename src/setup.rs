@@ -1,5 +1,8 @@
 use pgrx::prelude::*;
-extension_sql_file!("../sql/sample_source_tables.sql");
+extension_sql_file!("../sql/extensions.sql");
+extension_sql_file!("../sql/raise_notice.sql");
+extension_sql_file!("../sql/sample_source_tables/seller.sql");
+extension_sql_file!("../sql/sample_source_tables/customer.sql");
 
 // Creating Extension TABLES ** Purely ** as a Hello World + Example.
 
@@ -45,13 +48,3 @@ VALUES
 "#,
     name = "create_table_column_cat_stats_table",
 );
-
-// // - METADATA - TBD
-// extension_sql!( r#"
-
-// CREATE TABLE metadata (
-//     id SERIAL PRIMARY KEY
-// );
-// "#,
-//     name = "create_metadata_table",
-// );
