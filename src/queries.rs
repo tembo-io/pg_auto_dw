@@ -152,13 +152,13 @@ pub const SOURCE_TABLE_SAMPLE: &str = r#"
         "#;
 
 pub const SOURCE_COLUMN_SAMPLE: &str = r#"
-        WITH Temp_Data (schema, "table", column, status, confidence_level, status_response) AS (
+        WITH Temp_Data (schema, "table", "column", status, confidence_level, status_response) AS (
             VALUES
-            ('PUBLIC', 'CUSTOMER', 'CUSTOMER_ID', 'Ready', 10, 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'ACCOUNT_CREATION_DATE', 'Ready', 10, 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'MEMBERSHIP_TYPE', 'Ready', 9, 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'ZIP', 'Requires Attention', 6, 'Requires Attention: Column cannot be appropriately categorized as it may contain sensitive data.  Specifically, if the zip is an extended zip it may be considered PII.'),
-            ('PUBLIC', 'CUSTOMER', 'EMAIL', 'Ready', 10, 'Ready: Column...')
+            ('PUBLIC', 'CUSTOMER', 'CUSTOMER_ID', 'Ready', '10', 'Ready: Column...'),
+            ('PUBLIC', 'CUSTOMER', 'ACCOUNT_CREATION_DATE', 'Ready', '10', 'Ready: Column...'),
+            ('PUBLIC', 'CUSTOMER', 'MEMBERSHIP_TYPE', 'Ready', '9', 'Ready: Column...'),
+            ('PUBLIC', 'CUSTOMER', 'ZIP', 'Requires Attention', '6', 'Requires Attention: Column cannot be appropriately categorized as it may contain sensitive data.  Specifically, if the zip is an extended zip it may be considered PII.'),
+            ('PUBLIC', 'CUSTOMER', 'EMAIL', 'Ready', '10', 'Ready: Column...')
         )
         SELECT * FROM Temp_Data;
         "#;

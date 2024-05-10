@@ -10,7 +10,8 @@ fn hello_pg_auto_dw() -> &'static str {
     "Hello, pg_auto_dw"
 }
 
-#[pg_extern]
+#[pg_extern
+]
 fn build_public_hub_seller() -> &'static str {
     _ = Spi::run(queries::SELLER_DV);
     "Seller hub and sat created."
