@@ -88,19 +88,16 @@ flowchart LR
         update_context["auto_dw.update_context(object, context)"]
         go["auto_dw.go(flag, status)"]
   end
-    Start(("Start")) --> command["User\nChooses Command"]
+    start(("Start")) --> command["User\nChooses Command"]
     command --> split{"X"}
     split --> health & source_tables & source_column & source_clude & update_context & go --> join{"X"}
-    style health fill:#edf5ff,stroke:#000000
-    style source_tables fill:#edf5ff,stroke:#000000
-    style source_column fill:#edf5ff,stroke:#000000
-    style source_clude fill:#e3fae3,stroke:#000000
-    style update_context fill:#e3fae3,stroke:#000000
-    style go fill:#e3fae3,stroke:#000000
-    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
-    style command fill:#FFFFFF,stroke:#000000
-    style split fill:#FFFFFF,stroke:#000000
-    style functions_informative stroke:#000000
-    style functions_interactive stroke:#000000
+    join --> review["Review Results"]
+
+    classDef standard fill:#FFFFFF,stroke:#000000
+    classDef informative fill:#edf5ff,stroke:#000000
+    classDef interactive fill:#e3fae3,stroke:#000000
+    class start,command,split,join,review,functions_informative,functions_interactive standard
+    class health,source_tables,source_column informative
+    class source_clude,update_context,go interactive
 ```
 ![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
