@@ -88,16 +88,25 @@ flowchart LR
         update_context["auto_dw.update_context(object, context)"]
         go["auto_dw.go(flag, status)"]
   end
+ subgraph data_gov["Data Governance"]
+    direction BT
+        to_gov{"X"} --> gov["Issue\nGovernance"]
+  end
     start(("Start")) --> command["User\nChooses Command"]
     command --> split{"X"}
     split --> health & source_tables & source_column & source_clude & update_context & go --> join{"X"}
     join --> review["Review Results"]
+    review --> data_gov --> more_auto{"More\nAutomations?"} 
+    more_auto --> |no| done(("Done"))
+    more_auto --> |yes| start_again(("Restart"))
 
     classDef standard fill:#FFFFFF,stroke:#000000
     classDef informative fill:#edf5ff,stroke:#000000
     classDef interactive fill:#e3fae3,stroke:#000000
     class start,command,split,join,review,functions_informative,functions_interactive standard
+    class to_gov,gov,more_auto,start_again standard
     class health,source_tables,source_column informative
     class source_clude,update_context,go interactive
+    style done stroke-width:4px,fill:#FFFFFF,stroke:#000000
 ```
 ![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
