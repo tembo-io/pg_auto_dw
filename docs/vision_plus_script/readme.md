@@ -48,7 +48,7 @@ SELECT schema, "table", status, status_response
 FROM auto_dw.source_table()
 WHERE status_code = 'SKIP' ;
 ```
-2) **Identify the Root Cause **
+2) **Identify the Root Cause**
 ```SQL
 /* Identify the source table column that caused the problem, understand the issue, and potential solution. */ 
 SELECT schema, "table", "column", status, confidence_level, status_response
