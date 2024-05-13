@@ -73,5 +73,22 @@ flowchart LR
     style DW fill:#FFFFFF,stroke:#000000
     style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
 ```
-**Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths. 
+**Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths.
+```mermaid
+flowchart LR
+    Start(("Start")) --> command["User\nChooses Command"]
+    command --> split{"X"}
+    split --> health["auto_dw.split()"] & source_tables["auto_dw.source_tables()"] & source_column["auto_dw.source_column()"] & source_clude["auto_dw.source_include(object_pattern)"] & update_context["auto_dw.update_context(object, context)"] & go["auto_dw.go(flag, status)"] 
+    style Informative fill:#edf5ff,stroke:#000000
+    style Interactive fill:#e3fae3,stroke:#000000
+    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
+    style command fill:#FFFFFF
+    style split fill:#FFFFFF
+    style health fill:#edf5ff,stroke:#000000
+    style source_tables fill:#edf5ff,stroke:#000000
+    style source_column fill:#edf5ff,stroke:#000000
+    style source_clude fill:#e3fae3,stroke:#000000
+    style update_context fill:#e3fae3,stroke:#000000
+    style go fill:#e3fae3,stroke:#000000
+```
 ![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
