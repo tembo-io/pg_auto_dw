@@ -9,10 +9,32 @@
 
 All these capabilities will be delivered through a [small set of intuitive functions](../sql_functions/readme.md).
 
-**Script 1:** We want to make building a data warehouse easy.  And if the source tables are structured well and appropriately named, it should take two steps. 
-1) Install Extension
-2) Build Data Warehouse
-![User Story 1](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_1.png)
+## Demo: Act 1 - "1-Click Build"
+**Script 1:** We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
+
+1. **Install Extension**
+```SQL
+/* Installing Extension - Installs and creates sample source tables. */ 
+CREATE EXTENSION pg_auto_dw;
+```
+2. **Build Data Warehouse**
+```SQL
+/* Build me a Data Warehouse for tables that are Ready to Deploy */
+SELECT auto_dw.go();
+```
+3. **Data Warehouse Built**
+```mermaid
+flowchart LR
+    Start(("Start")) --> ext["Install Extension"]
+    ext -- #10711; --> build["Build Data Warehouse\nauto_dw.go()"]
+    build -- #10711; --> DW[("DW Created")]
+    DW --> Done(("Done"))
+    style Start stroke-width:1px
+    style ext color:none,fill:#e3fae3
+    style build fill:#e3fae3
+    style Done stroke-width:4px
+```
+
 
 **Script 2:** Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
 1) Identify a Skipped Table
