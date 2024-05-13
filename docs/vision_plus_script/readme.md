@@ -10,7 +10,7 @@
 All these capabilities will be delivered through a [small set of intuitive functions](../sql_functions/readme.md).
 
 ## Demo: Act 1 - "1-Click Build"
-**Script 1:** We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
+We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
 
 1. **Install Extension**
 ```SQL
@@ -23,6 +23,9 @@ CREATE EXTENSION pg_auto_dw;
 SELECT auto_dw.go();
 ```
 3. **Data Warehouse Built**
+```SQL
+/* Data Warehouse - No More Code Required */
+```
 ```mermaid
 flowchart LR
     Start(("Start")) --> ext["Install Extension"]
@@ -35,8 +38,8 @@ flowchart LR
     style Done stroke-width:4px
 ```
 
-
-**Script 2:** Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
+## Demo: Act 2 - “Auto Data Governance”
+Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
 1) Identify a Skipped Table
 2) Identify the Root Cause 
 3) Decide to Institute Some Data Governance Best Practices
