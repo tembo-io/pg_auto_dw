@@ -30,13 +30,14 @@ SELECT auto_dw.go();
 ```mermaid
 flowchart LR
     Start(("Start")) --> ext["Install Extension"]
-    ext -- #10711; --> build["Build Data Warehouse\nauto_dw.go()"]
-    build -- #10711; --> DW[("DW Created")]
+    ext -- ﬂ°°10711¶ß --> build["Build Data Warehouse\nauto_dw.go()"]
+    build -- ﬂ°°10711¶ß --> DW[("DW Created")]
     DW --> Done(("Done"))
-    style Start stroke-width:1px
-    style ext color:none,fill:#e3fae3
-    style build fill:#e3fae3
-    style Done stroke-width:4px
+    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
+    style ext color:none,fill:#FFFFFF,stroke:#000000
+    style build fill:#e3fae3,stroke:#000000
+    style DW fill:#FFFFFF,stroke:#000000
+    style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
 ```
 
 ## Demo: Act 2 - “Auto Data Governance”
