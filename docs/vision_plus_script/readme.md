@@ -103,10 +103,9 @@ flowchart LR
     classDef standard fill:#FFFFFF,stroke:#000000
     classDef informative fill:#edf5ff,stroke:#000000
     classDef interactive fill:#e3fae3,stroke:#000000
-    class start,command,split,join,review,functions_informative,functions_interactive standard
+    class start,command,split,join,review standard
     class to_gov,gov,more_auto,start_again standard
     class health,source_tables,source_column informative
     class source_clude,update_context,go interactive
     style done stroke-width:4px,fill:#FFFFFF,stroke:#000000
 ```
-![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
