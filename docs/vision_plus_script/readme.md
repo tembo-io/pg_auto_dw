@@ -92,7 +92,7 @@ flowchart LR
     direction BT
         to_gov{"X"} --> gov["Issue\nGovernance"]
   end
-    start(("Start")) --> command["User\nChooses Command"]
+    start(("Start")) --> command["Choose Command"]
     command --> split{"X"}
     split --> health & source_tables & source_column & source_clude & update_context & go --> join{"X"}
     join --> review["Review Results"]
