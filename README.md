@@ -1,4 +1,6 @@
 # PG_AUTO_DW
+<img src="resources/PG_AUTO_DW_LOGO.png" alt="LOGO of image" style="border-radius: 10px; width: 300px; height: auto;">
+
 [Open-source](LICENSE) PostgreSQL Extension for Automated Data Warehouse Creation
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
