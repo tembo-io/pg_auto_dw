@@ -61,6 +61,17 @@ WHERE schema = 'PUBLIC' AND "table" = 'CUSTOMER';
 /* Altering column length restricts the acceptance of extended ZIP codes.*/ 
 ALTER TABLE customer ALTER COLUMN zip TYPE VARCHAR(5);
 ```
-
+```mermaid
+flowchart LR
+    Start(("Start")) --> tbl["Identify a Skipped Table\nauto_dw.source_table()"]
+    tbl --> col["Identify the Root Cause\nauto_dw.source_column()"]
+    col --> DW[("Institute Data Governance\nBest Practices")]
+    DW --> Done(("Done"))
+    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
+    style tbl color:none,fill:#edf5ff,stroke:#000000
+    style col fill:#edf5ff,stroke:#000000
+    style DW fill:#FFFFFF,stroke:#000000
+    style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
+```
 **Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths. 
 ![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
