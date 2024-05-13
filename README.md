@@ -1,5 +1,5 @@
 # PG_AUTO_DW
-<img src="resources/PG_AUTO_DW_LOGO.png" alt="LOGO of image" style="border-radius: 10px; width: 300px; height: auto;">
+<img src="https://github.com/tembo-io/pg_auto_dw/blob/d055fdf57d156edcb374c2803dff69d4b6dcc773/resources/PG_AUTO_DW_LOGO.png" alt="LOGO of image" style="border-radius: 10px; width: 300px; height: auto;">
 
 [Open-source](LICENSE) PostgreSQL Extension for Automated Data Warehouse Creation
 
