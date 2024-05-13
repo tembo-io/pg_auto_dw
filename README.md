@@ -10,8 +10,18 @@ From [@ryw](https://github.com/ryw) 4-18-24:
 
 > This project attempts to implement an idea I can't shake - an auto-data warehouse extension that uses LLM to inspect operational Postgres schemas, and sets up automation to create a well-formed data warehouse (whether it's Data Vault, Kimball format, etc I don't care - just something better than a dumb dev like me would build as a DW - a pile of ingested tables, and ad-hoc derivative tables). I don't know if this project will work, but kind of fun to start something without certainty of success. But I have wanted this badly for years as a dev + data engineer.
 
-## Principles
+## Vision and Script
+**Project Vision:** To create an open source extension that automates the data warehouse build.  We aim to do this within a structured environment that incorporates best practices and harnesses the capabilities of Large Language Modes (LLM) technologies.
 
+**Goal:** This extension will enable users to: 
+- Automate the DW Build
+- Automate DW Maintenance  
+- Understand DW Health
+- Support Data Governance
+
+All these capabilities will be delivered through a [small set of intuitive functions](docs/sql_functions/readme.md).
+
+## Principles
 * Build in public
     * Public repo
     * Call attention/scrutiny to the work - release every week or two with blog/tweet calling attention to your work
@@ -25,19 +35,103 @@ From [@ryw](https://github.com/ryw) 4-18-24:
     * Step 5 - ship v0.1 (SemVer) that can do a little more than just the pre-canned demo
         * Ship product + demo video + documentation
 
-## Demo Script
+## Demo: Act 1 - "1-Click Build"
+We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
 
-(Note this demo mixes everything in one cluster as a POC. In prod use cases, we'd want to be pulling data perhaps w/ FDW from operational postgres databases.)
+1. **Install Extension**
+```SQL
+/* Installing Extension - Installs and creates sample source tables. */ 
+CREATE EXTENSION pg_auto_dw;
+```
+2. **Build Data Warehouse**
+```SQL
+/* Build me a Data Warehouse for tables that are Ready to Deploy */
+SELECT auto_dw.go();
+```
+3. **Data Warehouse Built**
+```SQL
+/* Data Warehouse - No More Code Required */
+```
 
-* I install the extension in my existing postgres cluster
-* I run function `auto_dw.evaluate()` - confidence score for each table + field
-    * I see one table has a field that needs help
-* I edit a table to have a description for a problem field
-* I run `auto_dw.evaluate(table)` - and I see the confidence for that table is fixed, green light
-* I run `auto_dw.go()` and it sets up everything, new schemas, jobs to keep them updated, etc.
-* I add a new table
-* I run  `auto_dw.evaluate()` and see the new table, and it’s good
-* I run `auto_dw.go()` and it’s now processing new table too
-* I don’t want some tables warehoused, I run `auto_dw.omit([table, table])`
-* I run `auto_dw.status()` to see those tables are no longer part of the system
-* I show the auto_dw dashboard in Tembo Cloud [blocked currently, but let's get [@ChuckHend](https://github.com/ChuckHend) working on this capability]
+```mermaid
+flowchart LR
+    Start(("Start")) --> ext["Install Extension"]
+    ext -- #10711; --> build["Build Data Warehouse\nauto_dw.go()"]
+    build -- #10711; --> DW[("DW Created")]
+    DW --> Done(("Done"))
+    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
+    style ext color:none,fill:#FFFFFF,stroke:#000000
+    style build fill:#e3fae3,stroke:#000000
+    style DW fill:#FFFFFF,stroke:#000000
+    style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
+```
+
+## Demo: Act 2 - “Auto Data Governance”
+Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered sensitive and handled appropriately.  In this sample script, Auto DW’s engine understands the attribute is useful for analysis, but also may need to be considered sensitive.  In this script the user will:
+1) **Identify a Skipped Table**
+```SQL
+/* Identify source tables skipped and not integration into the data warehouse. */ 
+SELECT schema, "table", status, status_response 
+FROM auto_dw.source_table()
+WHERE status_code = 'SKIP' ;
+```
+2) **Identify the Root Cause**
+```SQL
+/* Identify the source table column that caused the problem, understand the issue, and potential solution. */ 
+SELECT schema, "table", "column", status, confidence_level, status_response
+FROM auto_dw.source_column()
+WHERE schema = 'PUBLIC' AND "table" = 'CUSTOMER';
+```
+3) **Decide to Institute Some Data Governance Best Practices**
+```SQL
+/* Altering column length restricts the acceptance of extended ZIP codes.*/ 
+ALTER TABLE customer ALTER COLUMN zip TYPE VARCHAR(5);
+```
+```mermaid
+flowchart LR
+    Start(("Start")) --> tbl["Identify a Skipped Table\nauto_dw.source_table()"]
+    tbl --> col["Identify the Root Cause\nauto_dw.source_column()"]
+    col --> DW[("Institute Data Governance\nBest Practices")]
+    DW --> Done(("Done"))
+    style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
+    style tbl color:none,fill:#edf5ff,stroke:#000000
+    style col fill:#edf5ff,stroke:#000000
+    style DW fill:#FFFFFF,stroke:#000000
+    style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
+```
+**Auto DW Process Flow:** The script highlighted in Act 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths.
+```mermaid
+flowchart LR
+ subgraph functions_informative["Informative Functions"]
+    direction LR
+        health["auto_dw.health()"]
+        source_tables["auto_dw.source_tables()"]
+        source_column["auto_dw.source_column()"]
+  end
+ subgraph functions_interactive["Interactive Functions"]
+    direction LR
+        source_clude["auto_dw.source_include(object_pattern)"]
+        update_context["auto_dw.update_context(object, context)"]
+        go["auto_dw.go(flag, status)"]
+  end
+ subgraph data_gov["Data Governance"]
+    direction BT
+        to_gov{"X"} --> gov["Issue\nGovernance"]
+  end
+    start(("Start")) --> command["Choose Command"]
+    command --> split{"X"}
+    split --> health & source_tables & source_column & source_clude & update_context & go --> join{"X"}
+    join --> review["Review Results"]
+    review --> data_gov --> more_auto{"More\nAutomations?"} 
+    more_auto --> |no| done(("Done"))
+    more_auto --> |yes| start_again(("Restart"))
+
+    classDef standard fill:#FFFFFF,stroke:#000000
+    classDef informative fill:#edf5ff,stroke:#000000
+    classDef interactive fill:#e3fae3,stroke:#000000
+    class start,command,split,join,review standard
+    class to_gov,gov,more_auto,start_again standard
+    class health,source_tables,source_column informative
+    class source_clude,update_context,go interactive
+    style done stroke-width:4px,fill:#FFFFFF,stroke:#000000
+```
