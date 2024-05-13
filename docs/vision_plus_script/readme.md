@@ -73,7 +73,7 @@ flowchart LR
     style DW fill:#FFFFFF,stroke:#000000
     style Done stroke-width:4px,fill:#FFFFFF,stroke:#000000
 ```
-**Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths.
+**Auto DW Process Flow:** The script highlighted in Act 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths.
 ```mermaid
 flowchart LR
  subgraph functions_informative["Informative Functions"]
