@@ -52,7 +52,7 @@ SELECT auto_dw.go();
 ```
 3. **Data Warehouse Built**
 ```SQL
-/* Data Warehouse - No More Code Required */
+/* Data Warehouse Built - No More Code Required */
 ```
 
 ```mermaid
