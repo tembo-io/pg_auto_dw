@@ -30,8 +30,8 @@ SELECT auto_dw.go();
 ```mermaid
 flowchart LR
     Start(("Start")) --> ext["Install Extension"]
-    ext -- ﬂ°°10711¶ß --> build["Build Data Warehouse\nauto_dw.go()"]
-    build -- ﬂ°°10711¶ß --> DW[("DW Created")]
+    ext -- #10711; --> build["Build Data Warehouse\nauto_dw.go()"]
+    build -- #10711; --> DW[("DW Created")]
     DW --> Done(("Done"))
     style Start stroke-width:1px,fill:#FFFFFF,stroke:#000000
     style ext color:none,fill:#FFFFFF,stroke:#000000
@@ -41,7 +41,7 @@ flowchart LR
 ```
 
 ## Demo: Act 2 - “Auto Data Governance”
-Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine understands the attribute is useful for analysis, but also may need to be considered sensitive.  In this script the user will:
+Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered sensitive and handled appropriately.  In this sample script, Auto DW’s engine understands the attribute is useful for analysis, but also may need to be considered sensitive.  In this script the user will:
 1) **Identify a Skipped Table**
 ```SQL
 /* Identify source tables skipped and not integration into the data warehouse. */ 
