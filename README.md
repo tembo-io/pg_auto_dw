@@ -37,6 +37,16 @@ All these capabilities will be delivered through a [small set of intuitive funct
     * Step 5 - ship v0.1 (SemVer) that can do a little more than just the pre-canned demo
         * Ship product + demo video + documentation
 
+## Installation
+We are currently developing a new extension, starting with an initial set of defined [functions](docs/sql_functions/readme.md) and implementing a subset in a mockup extension. This version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope it will give you a small sense of what is to come in the coming weeks.
+
+If you’re interested in exploring this preliminary version, please follow these steps:
+
+1) Install Rust
+2) Install PGRX
+3) Run this Codebase
+
+
 ## Demo: Act 1 - "1-Click Build"
 We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
 
