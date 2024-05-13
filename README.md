@@ -1,7 +1,10 @@
-# pg_auto_dw
-An auto data warehouse extension for Postgres
+# PG_AUTO_DW
+[Open-source](LICENSE) PostgreSQL Extension for Automated Data Warehouse Creation
 
-## Why?
+[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
+[![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/4020)](https://ossrank.com/p/4020)
+
+## Background
 
 From [@ryw](https://github.com/ryw) 4-18-24:
 
