@@ -26,6 +26,7 @@ SELECT auto_dw.go();
 ```SQL
 /* Data Warehouse - No More Code Required */
 ```
+
 ```mermaid
 flowchart LR
     Start(("Start")) --> ext["Install Extension"]
@@ -39,11 +40,26 @@ flowchart LR
 ```
 
 ## Demo: Act 2 - “Auto Data Governance”
-Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine, considered knew the attribute is useful for analysis but also may need to be considered sensitive.  In this script the user will:
-1) Identify a Skipped Table
-2) Identify the Root Cause 
-3) Decide to Institute Some Data Governance Best Practices
-![User Story 2](PG_AUTO_DW-Visualized_Demo_Script_0.0.1-User_Story_2.png)
+Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered as sensitive.  In this sample script, Auto DW’s engine understands the attribute is useful for analysis, but also may need to be considered sensitive.  In this script the user will:
+1) **Identify a Skipped Table**
+```SQL
+/* Identify source tables skipped and not integration into the data warehouse. */ 
+SELECT schema, "table", status, status_response 
+FROM auto_dw.source_table()
+WHERE status_code = 'SKIP' ;
+```
+2) **Identify the Root Cause **
+```SQL
+/* Identify the source table column that caused the problem, understand the issue, and potential solution. */ 
+SELECT schema, "table", "column", status, confidence_level, status_response
+FROM auto_dw.source_column()
+WHERE schema = 'PUBLIC' AND "table" = 'CUSTOMER';
+```
+3) **Decide to Institute Some Data Governance Best Practices**
+```SQL
+/* Altering column length restricts the acceptance of extended ZIP codes.*/ 
+ALTER TABLE customer ALTER COLUMN zip TYPE VARCHAR(5);
+```
 
 **Auto DW Process Flow:** The script highlighted in example 2 demonstrates that there are several approaches to successfully implementing a data warehouse when using this extension. Below is a BPMN diagram that illustrates these various paths. 
 ![Functions Visualized](PG_AUTO_DW-Visualized-0.0.1-Functions.png)
