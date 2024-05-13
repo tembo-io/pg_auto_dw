@@ -52,7 +52,7 @@ We want to make building a data warehouse easy.  And, if the source tables are w
 
 1. **Install Extension**
 ```SQL
-/* Installing Extension - Installs and creates sample source tables. */ 
+/* Installing Extension - Installs and creates sample source tables. */
 CREATE EXTENSION pg_auto_dw;
 ```
 2. **Build Data Warehouse**
@@ -82,21 +82,21 @@ flowchart LR
 Sometimes it’s best to get a little push-back when creating a data warehouse, which supports appropriate data governance.  In this instance a table was not ready to deploy to the data warehouse as a table column may need to be considered sensitive and handled appropriately.  In this sample script, Auto DW’s engine understands the attribute is useful for analysis, but also may need to be considered sensitive.  In this script the user will:
 1) **Identify a Skipped Table**
 ```SQL
-/* Identify source tables skipped and not integration into the data warehouse. */ 
+/* Identify source tables skipped and not integration into the data warehouse. */
 SELECT schema, "table", status, status_response 
 FROM auto_dw.source_table()
 WHERE status_code = 'SKIP' ;
 ```
 2) **Identify the Root Cause**
 ```SQL
-/* Identify the source table column that caused the problem, understand the issue, and potential solution. */ 
+/* Identify the source table column that caused the problem, understand the issue, and potential solution. */
 SELECT schema, "table", "column", status, confidence_level, status_response
 FROM auto_dw.source_column()
 WHERE schema = 'PUBLIC' AND "table" = 'CUSTOMER';
 ```
 3) **Decide to Institute Some Data Governance Best Practices**
 ```SQL
-/* Altering column length restricts the acceptance of extended ZIP codes.*/ 
+/* Altering column length restricts the acceptance of extended ZIP codes.*/
 ALTER TABLE customer ALTER COLUMN zip TYPE VARCHAR(5);
 ```
 ```mermaid
