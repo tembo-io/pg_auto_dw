@@ -10,12 +10,6 @@ fn hello_pg_auto_dw() -> &'static str {
     "Hello, pg_auto_dw"
 }
 
-#[pg_extern]
-fn build_public_hub_seller() -> &'static str {
-    _ = Spi::run(queries::SELLER_DV);
-    "Seller hub and sat created."
-}
-
 #[pg_extern(name="go")]
 fn go(flag: &str, status: &str) -> &'static str {
     let _ = flag;
@@ -26,7 +20,8 @@ fn go(flag: &str, status: &str) -> &'static str {
 
 #[pg_extern(name="go")]
 fn go_no() -> &'static str {
-    "Function Overloading!!"
+    _ = Spi::run(queries::SELLER_DV);
+    queries::GO_OUTPUT
 }
 
 #[pg_extern]
@@ -89,56 +84,6 @@ fn source_column() -> Result<
                 row["status"].value(),
                 row["confidence_level"].value(),
                 row["status_response"].value())
-            )
-            .collect::<Vec<_>>())
-    })
-    .map(TableIterator::new)
-}
-
-
-
-#[pg_extern]
-fn evaluate() -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(schema_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(table_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_cat, Result<Option<String>, pgrx::spi::Error>),
-            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
-            name!(is_overridden, Result<Option<bool>, pgrx::spi::Error>)
-        )
-    >,
-    spi::Error,
-> {
-    let schema = "public";
-
-    let query_string = format!(r#"
-        SELECT schema_name, 
-            table_name, 
-            column_name, 
-            column_cat, 
-            confidence_level, 
-            is_overridden 
-        FROM auto_dw.table_column_cat
-        WHERE 
-            schema_name = '{}'
-        "#, schema);
-    
-    let query: &str = query_string.as_str();
-
-    info!("Evaluation of TABLE customer");
-    Spi::connect(|client| {
-        Ok(client
-            .select(query, None, None)?
-            .map(|row| (
-                row["schema_name"].value(), 
-                row["table_name"].value(), 
-                row["column_name"].value(),
-                row["column_cat"].value(),
-                row["confidence_level"].value(),
-                row["is_overridden"].value())
             )
             .collect::<Vec<_>>())
     })
