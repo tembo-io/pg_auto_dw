@@ -53,7 +53,7 @@ If you’re interested in exploring this preliminary version, please follow thes
 3) Run this Codebase
 
 ## Demo: Act 1 - "1-Click Build"
-> **Note:** Only use the code presented below. Any deviations may cause errors. This demo is for illustrative purposes only.
+> **Note:** Only use the code presented below. Any deviations may cause errors. This demo is for illustrative purposes only. It is currently tested on PGRX using the default PostgreSQL 13 instance.
 
 We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
 
@@ -92,7 +92,7 @@ Sometimes it’s best to get a little push-back when creating a data warehouse, 
 /* Identify source tables skipped and not integration into the data warehouse. */
 SELECT schema, "table", status, status_response 
 FROM auto_dw.source_table()
-WHERE status_code = 'SKIP' ;
+WHERE status_code = 'SKIP';
 ```
 2) **Identify the Root Cause**
 ```SQL
