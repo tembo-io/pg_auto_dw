@@ -38,7 +38,7 @@ All these capabilities will be delivered through a [small set of intuitive funct
         * Ship product + demo video + documentation
 
 ## Installation
-We are currently developing a new extension, starting with an initial set of defined [functions](docs/sql_functions/readme.md) and implementing a subset in a mockup extension. This version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope it will give you a small sense of what is to come in the coming weeks.
+We are currently developing a new extension, starting with an initial set of defined [functions](docs/sql_functions/readme.md) and implementing a subset in a mockup extension. This version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope this will offer a glimpse of what to expect in the weeks ahead.
 
 If you’re interested in exploring this preliminary version, please follow these steps:
 
