@@ -15,7 +15,7 @@ From [@ryw](https://github.com/ryw) 4-18-24:
 ## Project Vision
 To create an open source extension that automates the data warehouse build.  We aim to do this within a structured environment that incorporates best practices and harnesses the capabilities of Large Language Models (LLM) technologies.
 
-**Goal:** This extension will enable users to: 
+**Goals:** This extension will enable users to: 
 - Automate the DW Build
 - Automate DW Maintenance  
 - Understand DW Health
