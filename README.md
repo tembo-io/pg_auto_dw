@@ -37,6 +37,12 @@ All these capabilities will be delivered through a [small set of intuitive funct
     * Step 5 - ship v0.1 (SemVer) that can do a little more than just the pre-canned demo
         * Ship product + demo video + documentation
 
+## Data Vault
+We are starting with automation to facilitate a data vault implementation for our data warehouse. This will be a rudimentary raw vault setup, but we hope it will lead to substantial downstream business models.
+
+## Timeline
+We're currently working on a timeline to define points of success and ensure the smooth integration of new contributors to our project. This includes creating milestones, contributor guidelines, and hosting activities such as webinars and meetups. Stay tuned!
+
 ## Installation
 We are currently developing a new extension, starting with an initial set of defined [functions](docs/sql_functions/readme.md) and implementing a subset in a mockup extension. This version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope this will offer a glimpse of what to expect in the weeks ahead.
 
