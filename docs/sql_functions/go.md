@@ -19,7 +19,11 @@ Build a Data Warehouse
 -- Builds a DW for all source tables that are ready-to-deploy.
 SELECT auto_dw.go('Build', 'RTD');
 ```
-
+&nbsp;&nbsp;&nbsp;&nbsp;or
+```sql
+-- Builds a DW for all source tables that are ready-to-deploy.
+SELECT auto_dw.go(); -- Runs the default, which builds for all tables that are ready-to-deploy.
+```
 <br>
 
 Perform a Dry Run
