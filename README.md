@@ -42,10 +42,9 @@ We are currently developing a new extension, starting with an initial set of def
 
 If you’re interested in exploring this preliminary version, please follow these steps:
 
-1) Install Rust
-2) Install PGRX
+1) [Install Rust](https://doc.rust-lang.org/book/ch01-01-installation.html)
+2) [Install PGRX](https://github.com/pgcentralfoundation/pgrx)
 3) Run this Codebase
-
 
 ## Demo: Act 1 - "1-Click Build"
 We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
