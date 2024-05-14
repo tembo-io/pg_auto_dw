@@ -1,4 +1,4 @@
-# PG_AUTO_DW
+   # PG_AUTO_DW
 <img src="https://github.com/tembo-io/pg_auto_dw/blob/d055fdf57d156edcb374c2803dff69d4b6dcc773/resources/PG_AUTO_DW_LOGO.png" alt="LOGO of image" style="border-radius: 10px; width: 300px; height: auto;">
 
 [Open-source](LICENSE) PostgreSQL Extension for Automated Data Warehouse Creation
@@ -53,6 +53,8 @@ If you’re interested in exploring this preliminary version, please follow thes
 3) Run this Codebase
 
 ## Demo: Act 1 - "1-Click Build"
+> **Note:** Only use the code presented below. Any deviations may cause errors. This demo is for illustrative purposes only.
+
 We want to make building a data warehouse easy.  And, if the source tables are well-structured and appropriately named, constructing a data warehouse can be achieved with a single call to the extension.
 
 1. **Install Extension**
