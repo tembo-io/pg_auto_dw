@@ -62,12 +62,13 @@ We want to make building a data warehouse easy.  And, if the source tables are w
 /* Installing Extension - Installs and creates sample source tables. */
 CREATE EXTENSION pg_auto_dw;
 ```
-> Note: Installing this extension installs a couple source sample tables in the PUBLIC SCHEMA as well as the PG_CRYPTO extension.
+> **Note:** Installing this extension installs a couple source sample tables in the PUBLIC SCHEMA as well as the PG_CRYPTO extension.
 2. **Build Data Warehouse**
 ```SQL
 /* Build me a Data Warehouse for tables that are Ready to Deploy */
 SELECT auto_dw.go();
 ```
+> **Note:** This will provide a build ID and some helpful function tips.  Do not implement these tips at this time. They are for illustrative purposes of future functionality.
 3. **Data Warehouse Built**
 ```SQL
 /* Data Warehouse Built - No More Code Required */
@@ -95,6 +96,7 @@ SELECT schema, "table", status, status_response
 FROM auto_dw.source_table()
 WHERE status_code = 'SKIP';
 ```
+> **Note:** Running this code will provide an understanding of which table was skipped along with a high level reason.  You should see the following output from the status_response: “Source Table was skipped as column(s) need additional context. Please run the following SQL query for more information: SELECT schema, table, column, status, status_response FROM auto_dw.source_status_detail() WHERE schema = 'public' AND table = 'customers'.”
 2) **Identify the Root Cause**
 ```SQL
 /* Identify the source table column that caused the problem, understand the issue, and potential solution. */
@@ -102,11 +104,13 @@ SELECT schema, "table", "column", status, confidence_level, status_response
 FROM auto_dw.source_column()
 WHERE schema = 'PUBLIC' AND "table" = 'CUSTOMER';
 ```
+> **Note:** Running this code will provide an understanding of which table column was skipped along with a reason in the status_response.  You should see the following output: “Requires Attention: Column cannot be appropriately categorized as it may contain sensitive data.  Specifically, if the zip is an extended zip it may be considered PII.”
 3) **Decide to Institute Some Data Governance Best Practices**
 ```SQL
 /* Altering column length restricts the acceptance of extended ZIP codes.*/
 ALTER TABLE customer ALTER COLUMN zip TYPE VARCHAR(5);
 ```
+> **Note:** Here the choice was up to the user to make a change that facilitated LLM understanding of data sensitivity.  In this case, limiting the type to VARCHAR(5) will allow the LLM to understand that this column will not contain sensitive information in the future. 
 ```mermaid
 flowchart LR
     Start(("Start")) --> tbl["Identify a Skipped Table\nauto_dw.source_table()"]
