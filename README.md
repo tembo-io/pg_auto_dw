@@ -62,6 +62,7 @@ We want to make building a data warehouse easy.  And, if the source tables are w
 /* Installing Extension - Installs and creates sample source tables. */
 CREATE EXTENSION pg_auto_dw;
 ```
+> Note: Installing this extension installs a couple source sample tables in the PUBLIC SCHEMA as well as the PG_CRYPTO extension.
 2. **Build Data Warehouse**
 ```SQL
 /* Build me a Data Warehouse for tables that are Ready to Deploy */
