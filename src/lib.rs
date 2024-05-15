@@ -3,55 +3,87 @@ pub use pgrx::prelude::*;
 pgrx::pg_module_magic!();
 
 mod setup;
+mod queries; 
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {
     "Hello, pg_auto_dw"
 }
 
+#[pg_extern(name="go")]
+fn go(flag: &str, status: &str) -> &'static str {
+    let _ = flag;
+    let _ = status;
+    _ = Spi::run(queries::SELLER_DV);
+    queries::GO_OUTPUT
+}
+
+#[pg_extern(name="go")]
+fn go_no() -> &'static str {
+    _ = Spi::run(queries::SELLER_DV);
+    queries::GO_OUTPUT
+}
+
 #[pg_extern]
-fn evaluate() -> Result<
+fn source_table() -> Result<
     TableIterator<
         'static,
         (
-            name!(schema_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(table_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_cat, Result<Option<String>, pgrx::spi::Error>),
-            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
-            name!(is_overridden, Result<Option<bool>, pgrx::spi::Error>)
+            name!(schema, Result<Option<String>, pgrx::spi::Error>),
+            name!(table, Result<Option<String>, pgrx::spi::Error>),
+            name!(status, Result<Option<String>, pgrx::spi::Error>),
+            name!(status_code, Result<Option<String>, pgrx::spi::Error>),
+            name!(status_response, Result<Option<String>, pgrx::spi::Error>)
         )
     >,
     spi::Error,
 > {
-    let schema = "public";
-    // let table = "customer";
-
-    let query_string = format!(r#"
-        SELECT schema_name, 
-            table_name, 
-            column_name, 
-            column_cat, 
-            confidence_level, 
-            is_overridden 
-        FROM auto_dw.table_column_cat
-        WHERE 
-            schema_name = '{}'
-        "#, schema);
-    
-    let query: &str = query_string.as_str();
+    let query: &str = queries::SOURCE_TABLE_SAMPLE;
 
     info!("Evaluation of TABLE customer");
     Spi::connect(|client| {
         Ok(client
             .select(query, None, None)?
             .map(|row| (
-                row["schema_name"].value(), 
-                row["table_name"].value(), 
-                row["column_name"].value(),
-                row["column_cat"].value(),
+                row["schema"].value(), 
+                row["table"].value(), 
+                row["status"].value(),
+                row["status_code"].value(),
+                row["status_response"].value())
+            )
+            .collect::<Vec<_>>())
+    })
+    .map(TableIterator::new)
+}
+
+#[pg_extern]
+fn source_column() -> Result<
+    TableIterator<
+        'static,
+        (
+            name!(schema, Result<Option<String>, pgrx::spi::Error>),
+            name!(table, Result<Option<String>, pgrx::spi::Error>),
+            name!(column, Result<Option<String>, pgrx::spi::Error>),
+            name!(status, Result<Option<String>, pgrx::spi::Error>),
+            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
+            name!(status_response, Result<Option<String>, pgrx::spi::Error>)
+        )
+    >,
+    spi::Error,
+> {
+    let query: &str = queries::SOURCE_COLUMN_SAMPLE;
+
+    info!("Evaluation of TABLE customer");
+    Spi::connect(|client| {
+        Ok(client
+            .select(query, None, None)?
+            .map(|row| (
+                row["schema"].value(), 
+                row["table"].value(), 
+                row["column"].value(), 
+                row["status"].value(),
                 row["confidence_level"].value(),
-                row["is_overridden"].value())
+                row["status_response"].value())
             )
             .collect::<Vec<_>>())
     })
