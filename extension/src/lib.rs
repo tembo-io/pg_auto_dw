@@ -3,7 +3,8 @@ pub use pgrx::prelude::*;
 pgrx::pg_module_magic!();
 
 mod setup;
-mod queries; 
+mod queries;
+mod bgworker;
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {
