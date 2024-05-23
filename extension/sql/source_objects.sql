@@ -271,3 +271,5 @@ LEFT JOIN source_objects ON source_objects.current_flag = 'Y'
 	AND source_objects.table_oid = temp_source_objects.table_oid
 	AND source_objects.column_ordinal_position = temp_source_objects.column_ordinal_position
 WHERE source_objects.column_ordinal_position IS NULL;
+
+DROP TABLE IF EXISTS temp_source_objects;

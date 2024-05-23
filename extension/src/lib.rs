@@ -26,6 +26,12 @@ fn go_no() -> &'static str {
 }
 
 #[pg_extern]
+fn source_push() -> &'static str {
+    _ = Spi::run(queries::SOURCE_OBJECTS_LOAD);
+    "Pushed"
+}
+
+#[pg_extern]
 fn source_table() -> Result<
     TableIterator<
         'static,
