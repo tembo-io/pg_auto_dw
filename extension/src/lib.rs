@@ -27,8 +27,27 @@ fn go_no() -> &'static str {
 
 #[pg_extern]
 fn source_push() -> &'static str {
-    _ = Spi::run(queries::SOURCE_OBJECTS_LOAD);
+    _ = Spi::run(queries::SOURCE_OBJECTS_INIT);
     "Pushed"
+}
+
+#[pg_extern]
+fn source_exlude(   schema_pattern_exclude: &str, 
+                    table_pattern_exclude: default!(Option<&str>, "NULL"), 
+                    column_pattern_exclude: default!(Option<&str>, "NULL")) -> &'static str {
+    let schema_pattern_include: &str = "a^";
+    let table_pattern_include: &str = "a^";
+    let column_pattern_include: &str = "a^";
+    let table_pattern_exclude: &str = table_pattern_exclude.unwrap_or(".*");
+    let column_pattern_exclude: &str = column_pattern_exclude.unwrap_or(".*");
+    _ = Spi::run(queries::source_object_dw( schema_pattern_include, 
+                                            table_pattern_include, 
+                                            column_pattern_include, 
+                                            schema_pattern_exclude, 
+                                            table_pattern_exclude, 
+                                            column_pattern_exclude)
+                                            .as_str());
+    "Pattern Excluded"
 }
 
 #[pg_extern]
