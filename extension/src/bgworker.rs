@@ -5,12 +5,13 @@ use std::time::Duration;
 
 use crate::queries;
 
+// TODO: Create initial pattern for injection.
+
 #[pg_guard]
 pub extern "C" fn _PG_init() {
-    BackgroundWorkerBuilder::new("Background Worker Example")
+    BackgroundWorkerBuilder::new("Background Worker Source Object Update")
         .set_function("background_worker_main")
         .set_library("pg_auto_dw")
-        .set_argument(42i32.into_datum())
         .enable_spi_access()
         .load();
 }
@@ -59,7 +60,5 @@ pub extern "C" fn background_worker_main(arg: pg_sys::Datum) {
         });
         result.unwrap_or_else(|e| panic!("got an error: {}", e));
 }
-
-
-    log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
+log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
 }
