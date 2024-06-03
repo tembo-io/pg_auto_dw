@@ -670,6 +670,7 @@ pub const SOURCE_OBJECTS_UPDATE: &str = r#"
         DROP TABLE IF EXISTS temp_source_objects;
 "#;
 
+#[no_mangle]
 pub fn source_object_dw(schema_pattern_include: &str, table_pattern_include: &str, column_pattern_include: &str, schema_pattern_exclude: &str, table_pattern_exclude: &str, column_pattern_exclude: &str) -> String {
     format!(r#"
     DROP TABLE IF EXISTS temp_source_objects;

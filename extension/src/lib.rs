@@ -32,12 +32,48 @@ fn source_push() -> &'static str {
 }
 
 #[pg_extern]
+fn source_update() -> &'static str {
+    _ = Spi::run(queries::source_object_dw( 
+        "a^", 
+        "a^", 
+        "a^", 
+        "a^", 
+        "a^", 
+        "a^")
+        .as_str());
+    "soure_objects_updated"
+}
+
+#[pg_extern]
+fn source_include(  schema_pattern_include: &str, 
+                    table_pattern_include: default!(Option<&str>, "NULL"), 
+                    column_pattern_include: default!(Option<&str>, "NULL")) -> &'static str {
+    // Include Patterns
+    let schema_pattern_include: &str = schema_pattern_include;
+    let table_pattern_include: &str = table_pattern_include.unwrap_or(".*");
+    let column_pattern_include: &str = column_pattern_include.unwrap_or(".*");
+    // Exclude Patterns
+    let schema_pattern_exclude: &str = "a^";
+    let table_pattern_exclude: &str = "a^";
+    let column_pattern_exclude: &str = "a^";
+    _ = Spi::run(queries::source_object_dw( schema_pattern_include, 
+                                            table_pattern_include, 
+                                            column_pattern_include, 
+                                            schema_pattern_exclude, 
+                                            table_pattern_exclude, 
+                                            column_pattern_exclude)
+                                            .as_str());
+    "Pattern Excluded"
+}
+
+#[pg_extern]
 fn source_exlude(   schema_pattern_exclude: &str, 
                     table_pattern_exclude: default!(Option<&str>, "NULL"), 
                     column_pattern_exclude: default!(Option<&str>, "NULL")) -> &'static str {
     let schema_pattern_include: &str = "a^";
     let table_pattern_include: &str = "a^";
     let column_pattern_include: &str = "a^";
+    let schema_pattern_exclude: &str = schema_pattern_exclude;
     let table_pattern_exclude: &str = table_pattern_exclude.unwrap_or(".*");
     let column_pattern_exclude: &str = column_pattern_exclude.unwrap_or(".*");
     _ = Spi::run(queries::source_object_dw( schema_pattern_include, 

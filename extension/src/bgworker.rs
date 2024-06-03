@@ -37,8 +37,17 @@ pub extern "C" fn background_worker_main(arg: pg_sys::Datum) {
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
             Spi::connect(|_| {
-                Spi::run(queries::SOURCE_OBJECTS_UPDATE)?;
-                log!("Client BG Worker");
+                Spi::run("SELECT 'Hello'")?;
+                // Spi::run(queries::SOURCE_OBJECTS_UPDATE)?;
+                // Spi::run(queries::source_object_dw( 
+                //     "a^", 
+                //     "a^", 
+                //     "a^", 
+                //     "a^", 
+                //     "a^", 
+                //     "a^")
+                //     .as_str())?;
+                // log!("Client BG Worker");
                 Ok(())
             })
         });
