@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use crate::queries;
 
-// TODO: Create initial pattern for injection.
+// TODO: Create initial pattern for injection of public schema.
+// TODO: Break after X tries w/out Schema.
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -18,7 +19,7 @@ pub extern "C" fn _PG_init() {
 
 #[pg_guard]
 #[no_mangle]
-pub extern "C" fn background_worker_main(arg: pg_sys::Datum) {
+pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
     BackgroundWorker::connect_worker_to_spi(Some("pg_auto_dw"), None);

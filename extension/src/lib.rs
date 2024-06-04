@@ -27,7 +27,15 @@ fn go_no() -> &'static str {
 
 #[pg_extern]
 fn source_push() -> &'static str {
-    _ = Spi::run(queries::SOURCE_OBJECTS_INIT);
+    _ = Spi::run(
+            queries::source_object_dw(
+                "public", 
+                ".*", 
+                ".*", 
+                "a^", 
+                "a^", 
+                "a^"
+            ).as_str());
     "Pushed"
 }
 
@@ -63,7 +71,7 @@ fn source_include(  schema_pattern_include: &str,
                                             table_pattern_exclude, 
                                             column_pattern_exclude)
                                             .as_str());
-    "Pattern Excluded"
+    "Pattern Included"
 }
 
 #[pg_extern]
