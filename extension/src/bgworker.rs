@@ -8,7 +8,6 @@ use crate::queries;
 use crate::ollama_client;
 
 // TODO: Create initial pattern for injection of public schema.
-// TODO: Break after X tries w/out Schema.
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
