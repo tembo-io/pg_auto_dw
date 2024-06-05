@@ -5,6 +5,7 @@ pgrx::pg_module_magic!();
 mod setup;
 mod queries;
 mod bgworker;
+mod ollama_client;
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {
