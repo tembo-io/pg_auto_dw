@@ -81,6 +81,29 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
+
+            let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
+                Spi::connect(|mut client| {
+                    log!("Client BG Worker - Source Objects JSON Pulling.");
+                    let source_objects_json_results: Result<spi::SpiTupleTable, spi::SpiError> = 
+                        client.select(queries::SOURCE_OBJECTS_JSON, None, None);
+                    match source_objects_json_results {
+                        Ok(table_check) => {
+                            if table_check.len() > 0 {
+                                log!("JSON object exists - OLLAMA Client");
+                            } else {
+                                log!("JSON object does not exist - OLLAMA Client");
+                            }
+                        },
+                        Err(e) => {
+                            log!("Error getting JSON Objects: {:?}", e);
+                        }
+                    }
+                    Ok(())
+                })
+            });
+            result.unwrap_or_else(|e| panic!("got an error: {}", e));
+
             let new_json = r#"
             {
               "Schema Name": "public",

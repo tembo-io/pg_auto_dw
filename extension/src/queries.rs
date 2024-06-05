@@ -163,6 +163,35 @@ pub const SOURCE_COLUMN_SAMPLE: &str = r#"
         SELECT * FROM Temp_Data;
         "#;
 
+pub const SOURCE_OBJECTS_JSON: &str = r#"
+        WITH source_table_details AS (
+            SELECT *
+            FROM auto_dw.source_objects
+            WHERE current_flag = 'Y' AND deleted_flag = 'N'
+            AND schema_name = 'public' AND table_name = 'seller' 
+        ),
+        source_prep AS (
+            SELECT 
+                schema_name, table_name, 
+                'Column No: ' 	|| column_ordinal_position 	|| ' ' ||
+                'Named: '  		|| column_name 				|| ' ' ||
+                'of type: ' 	|| column_type_name 		|| ' ' ||
+                CASE
+                    WHEN column_pk_ind =1 THEN 'And is a primary key.' ELSE ''
+                END 
+                AS column_details 
+            FROM source_table_details
+        )
+        SELECT
+        json_build_object(
+            'Schema Name', schema_name,
+            'Table Name', table_name,
+            'Column Details', array_agg(column_details)
+        ) AS table_details
+        FROM source_prep
+        GROUP BY schema_name, table_name;
+        ;
+        "#;
 #[no_mangle]
 pub fn source_object_dw(schema_pattern_include: &str, table_pattern_include: &str, column_pattern_include: &str, schema_pattern_exclude: &str, table_pattern_exclude: &str, column_pattern_exclude: &str) -> String {
     format!(r#"
