@@ -83,41 +83,67 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
 
-            let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
-                Spi::connect(|mut client| {
+    //         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
+    //             Spi::connect(|mut client| {
+    //                 log!("Client BG Worker - Source Objects JSON Pulling.");
+    //                 let source_objects_json_result: Result<spi::SpiTupleTable, spi::SpiError> = 
+    //                     client.select(queries::SOURCE_OBJECTS_JSON, None, None);
+    //                 match source_objects_json_result {
+    //                     Ok(source_objects_json) => {
+    //                         if source_objects_json.len() > 0 {
+    //                             log!("{} JSON object exists - OLLAMA Client", source_objects_json.len());
+    //                             for (index, json_record)in source_objects_json.into_iter().enumerate() {
+    //                                 log!("About to work on JSON number {}", index + 1);
+    //                                 let json_data_opt = json_record.get_datum_by_ordinal(1)?.value::<pgrx::Json>()?;
+                                
+    //                                 // Handle the Option
+    //                                 if let Some(Json(json_data)) = json_data_opt {
+    //                                 log!("JSON value {:?}", json_data);
+    //                                 let json_data_pretty_string = serde_json::to_string_pretty(&json_data).expect("Failed to convert JSON to pretty string");
+    //                                 log!("JSON pretty {}", json_data_pretty_string);
+    //                                 } else {
+    //                                 log!("JSON data is None for JSON number {}", index + 1);
+    // }
+    //                             }
+                                
+    //                         } else {
+    //                             log!("No JSON Objects for OLLAMA Client");
+    //                         }
+    //                     },
+    //                     Err(e) => {
+    //                         log!("Error getting JSON Objects: {:?}", e);
+    //                     }
+    //                 }
+    //                 Ok(())
+    //             })
+    //         });
+    //         result.unwrap_or_else(|e| panic!("got an error: {}", e));
+
+            let result: Result<Vec<Json>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
+                Spi::connect(|client| {
                     log!("Client BG Worker - Source Objects JSON Pulling.");
-                    let source_objects_json_result: Result<spi::SpiTupleTable, spi::SpiError> = 
-                        client.select(queries::SOURCE_OBJECTS_JSON, None, None);
-                    match source_objects_json_result {
-                        Ok(source_objects_json) => {
-                            if source_objects_json.len() > 0 {
-                                log!("{} JSON object exists - OLLAMA Client", source_objects_json.len());
-                                for (index, json_record)in source_objects_json.into_iter().enumerate() {
-                                    log!("About to work on JSON number {}", index + 1);
-                                    let json_data_opt = json_record.get_datum_by_ordinal(1)?.value::<pgrx::Json>()?;
-                                
-                                    // Handle the Option
-                                    if let Some(Json(json_data)) = json_data_opt {
-                                    log!("JSON value {:?}", json_data);
-                                    let json_data_pretty_string = serde_json::to_string_pretty(&json_data).expect("Failed to convert JSON to pretty string");
-                                    log!("JSON pretty {}", json_data_pretty_string);
-                                    } else {
-                                    log!("JSON data is None for JSON number {}", index + 1);
-    }
-                                }
-                                
-                            } else {
-                                log!("No JSON Objects for OLLAMA Client");
-                            }
-                        },
-                        Err(e) => {
-                            log!("Error getting JSON Objects: {:?}", e);
-                        }
+                    let source_objects_json = client.select(queries::SOURCE_OBJECTS_JSON, None, None)?;
+                    let mut v_json: Vec<Json> = Vec::new();
+                    for source_object_json in source_objects_json {
+                        let json_data_opt = source_object_json.get_datum_by_ordinal(1)?.value::<pgrx::Json>()?;
+                        v_json.push(json_data_opt.unwrap());
                     }
-                    Ok(())
+                    Ok(v_json)
                 })
             });
-            result.unwrap_or_else(|e| panic!("got an error: {}", e));
+
+            let v_json = result.unwrap_or_else(|e| panic!("got an error: {}", e));
+
+            for json in v_json {
+                let json_string_pretty = serde_json::to_string_pretty(&json).expect("Failed to convert JSON to pretty string");
+                log!("JSON pretty {}",json_string_pretty);
+
+                match ollama_client::send_request(json_string_pretty.as_str()).await {
+                    Ok(_) => log!("Ollama client request successful."),
+                    Err(e) => log!("Error in Ollama client request: {}", e),
+                }
+            }
+
 
             // let new_json = r#"
             // {
@@ -131,10 +157,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
             //   ]
             // }
             // "#;
-            // match ollama_client::send_request(new_json).await {
-            //     Ok(_) => log!("Ollama client request successful."),
-            //     Err(e) => log!("Error in Ollama client request: {}", e),
-            // }
+
         });
     }
     log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
