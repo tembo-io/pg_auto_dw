@@ -82,7 +82,6 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
-
             let result: Result<Vec<Json>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
                     log!("Client BG Worker - Source Objects JSON Pulling.");
@@ -107,8 +106,6 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                     Err(e) => log!("Error in Ollama client request: {}", e),
                 }
             }
-
-
         });
     }
     log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());

@@ -168,7 +168,6 @@ pub const SOURCE_OBJECTS_JSON: &str = r#"
             SELECT *
             FROM auto_dw.source_objects
             WHERE current_flag = 'Y' AND deleted_flag = 'N'
-            AND schema_name = 'public' AND table_name = 'seller' 
         ),
         source_prep AS (
             SELECT 
