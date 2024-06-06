@@ -83,42 +83,6 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
 
-    //         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
-    //             Spi::connect(|mut client| {
-    //                 log!("Client BG Worker - Source Objects JSON Pulling.");
-    //                 let source_objects_json_result: Result<spi::SpiTupleTable, spi::SpiError> = 
-    //                     client.select(queries::SOURCE_OBJECTS_JSON, None, None);
-    //                 match source_objects_json_result {
-    //                     Ok(source_objects_json) => {
-    //                         if source_objects_json.len() > 0 {
-    //                             log!("{} JSON object exists - OLLAMA Client", source_objects_json.len());
-    //                             for (index, json_record)in source_objects_json.into_iter().enumerate() {
-    //                                 log!("About to work on JSON number {}", index + 1);
-    //                                 let json_data_opt = json_record.get_datum_by_ordinal(1)?.value::<pgrx::Json>()?;
-                                
-    //                                 // Handle the Option
-    //                                 if let Some(Json(json_data)) = json_data_opt {
-    //                                 log!("JSON value {:?}", json_data);
-    //                                 let json_data_pretty_string = serde_json::to_string_pretty(&json_data).expect("Failed to convert JSON to pretty string");
-    //                                 log!("JSON pretty {}", json_data_pretty_string);
-    //                                 } else {
-    //                                 log!("JSON data is None for JSON number {}", index + 1);
-    // }
-    //                             }
-                                
-    //                         } else {
-    //                             log!("No JSON Objects for OLLAMA Client");
-    //                         }
-    //                     },
-    //                     Err(e) => {
-    //                         log!("Error getting JSON Objects: {:?}", e);
-    //                     }
-    //                 }
-    //                 Ok(())
-    //             })
-    //         });
-    //         result.unwrap_or_else(|e| panic!("got an error: {}", e));
-
             let result: Result<Vec<Json>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
                     log!("Client BG Worker - Source Objects JSON Pulling.");
@@ -144,19 +108,6 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 }
             }
 
-
-            // let new_json = r#"
-            // {
-            //   "Schema Name": "public",
-            //   "Table Name": "seller",
-            //   "Column Details": [
-            //     "Column No: 2 Named: city of type: character varying(255)",
-            //     "Column No: 3 Named: state of type: character(2)",
-            //     "Column No: 4 Named: zip_5 of type: character varying(10)",
-            //     "Column No: 1 Named: seller_id of type: uuid And is a primary key."
-            //   ]
-            // }
-            // "#;
 
         });
     }
