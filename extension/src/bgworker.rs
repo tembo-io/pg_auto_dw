@@ -5,7 +5,8 @@ use tokio::runtime::Runtime;
 
 use crate::queries;
 
-use crate::ollama_client;
+// use crate::ollama_client;
+use crate::service::ollama_client;
 use pgrx::Json;
 
 // TODO: Create initial pattern for injection of public schema.

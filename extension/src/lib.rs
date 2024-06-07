@@ -5,7 +5,12 @@ pgrx::pg_module_magic!();
 mod setup;
 mod queries;
 mod bgworker;
-mod ollama_client;
+
+// mod ollama_client;
+
+mod controller; // Coordinates application logic and model-service interactions.
+mod model;      // Defines data structures and data-related methods.
+mod service;    // Manages external communications with services like the ollama server.
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {
