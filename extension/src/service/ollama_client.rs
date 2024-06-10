@@ -17,6 +17,7 @@ pub struct GenerateResponse {
     pub done: bool,
 }
 
+#[cfg(feature = "experimental")]
 pub async fn send_request(new_json: &str) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
     

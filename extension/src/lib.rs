@@ -4,6 +4,8 @@ pgrx::pg_module_magic!();
 
 mod setup;
 mod queries;
+
+#[cfg(feature = "experimental")]
 mod bgworker;
 
 // mod ollama_client;

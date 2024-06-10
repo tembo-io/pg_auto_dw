@@ -163,6 +163,9 @@ pub const SOURCE_COLUMN_SAMPLE: &str = r#"
         SELECT * FROM Temp_Data;
         "#;
 
+
+
+#[cfg(feature = "experimental")]
 pub const SOURCE_OBJECTS_JSON: &str = r#"
         WITH source_table_details AS (
             SELECT *
@@ -191,6 +194,7 @@ pub const SOURCE_OBJECTS_JSON: &str = r#"
         GROUP BY schema_name, table_name;
         ;
         "#;
+
 #[no_mangle]
 pub fn source_object_dw(schema_pattern_include: &str, table_pattern_include: &str, column_pattern_include: &str, schema_pattern_exclude: &str, table_pattern_exclude: &str, column_pattern_exclude: &str) -> String {
     format!(r#"

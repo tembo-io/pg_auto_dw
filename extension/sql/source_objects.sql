@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS source_objects;
 
 CREATE TABLE IF NOT EXISTS source_objects
 (
-    id bigserial PRIMARY KEY,  -- Auto-incrementing primary key with a larger range
+    pk_source_objects bigserial PRIMARY KEY,  -- Auto-incrementing primary key with a larger range
 	schema_oid oid,
     schema_name name,
     schema_description text,
