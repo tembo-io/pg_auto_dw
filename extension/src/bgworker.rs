@@ -36,6 +36,10 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
             Spi::connect(|mut client| {
+                #[cfg(feature = "experimental")]
+                {
+                    log!("Experimental feature is enabled!");
+                }
                 log!("Client BG Worker - Source Objects to update.");
                 log!("Checking if TABLE AUTO_DW.SOURCE_OJBECTS exists.");
                 let table_check_results: Result<spi::SpiTupleTable, spi::SpiError> = 
