@@ -174,6 +174,12 @@ pub const SOURCE_OBJECTS_JSON: &str = r#"
         ),
         source_prep AS (
             SELECT 
+                table_oid,
+                column_ordinal_position,
+                json_build_object(
+                    'PK Source Objects', pk_source_objects,
+                    'Column Ordinal Position', column_ordinal_position
+                ) AS column_link,
                 schema_name, table_name, 
                 'Column No: ' 	|| column_ordinal_position 	|| ' ' ||
                 'Named: '  		|| column_name 				|| ' ' ||
@@ -185,13 +191,17 @@ pub const SOURCE_OBJECTS_JSON: &str = r#"
             FROM source_table_details
         )
         SELECT
+        table_oid,
+        json_build_object(
+            'Column Links', array_agg(column_link ORDER BY column_ordinal_position ASC)
+        ) AS table_column_links,
         json_build_object(
             'Schema Name', schema_name,
             'Table Name', table_name,
-            'Column Details', array_agg(column_details)
+            'Column Details', array_agg(column_details ORDER BY column_ordinal_position ASC)
         ) AS table_details
         FROM source_prep
-        GROUP BY schema_name, table_name;
+        GROUP BY table_oid, schema_name, table_name
         ;
         "#;
 

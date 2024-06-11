@@ -3,7 +3,7 @@ use pgrx::prelude::*;
 // extension_sql_file!("../sql/raise_notice.sql");
 extension_sql_file!("../sql/sample_source_tables/seller.sql");
 extension_sql_file!("../sql/sample_source_tables/customer.sql");
-extension_sql_file!("../sql/source_objects.sql");
+extension_sql_file!("../sql/info_tables.sql");
 
 // Creating Extension TABLES ** Purely ** as a Hello World + Example.
 

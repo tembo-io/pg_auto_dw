@@ -9,6 +9,8 @@ use crate::queries;
 use crate::service::ollama_client;
 use pgrx::Json;
 
+use crate::model::source_objects;
+
 
 // TODO: Create initial pattern for injection of public schema.
 
@@ -88,29 +90,47 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
-            let result: Result<Vec<Json>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
+            let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
                     log!("Client BG Worker - Source Objects JSON Pulling.");
-                    let source_objects_json = client.select(queries::SOURCE_OBJECT_JSON, None, None)?;
-                    let mut v_json: Vec<Json> = Vec::new();
+                    let source_objects_json = client.select(queries::SOURCE_OBJECTS_JSON, None, None)?;
+                    let mut v_source_table_prompts: Vec<source_objects::SourceTablePrompt> = Vec::new();
                     for source_object_json in source_objects_json {
-                        let json_data_opt = source_object_json.get_datum_by_ordinal(1)?.value::<pgrx::Json>()?;
-                        v_json.push(json_data_opt.unwrap());
+
+                        let table_oid = source_object_json.get_datum_by_ordinal(1)?.value::<u32>()?.unwrap();
+                        let table_column_links = source_object_json.get_datum_by_ordinal(2)?.value::<pgrx::Json>()?.unwrap();
+                        let table_details = source_object_json.get_datum_by_ordinal(3)?.value::<pgrx::Json>()?.unwrap();
+
+                        let source_table_prompt = source_objects::SourceTablePrompt{
+                                                                                        key: table_oid, 
+                                                                                        table_column_links: table_column_links, 
+                                                                                        table_details: table_details
+                                                                                    };
+                        
+                        v_source_table_prompts.push(source_table_prompt)
                     }
-                    Ok(v_json)
+                    Ok(v_source_table_prompts)
                 })
             });
 
-            let v_json = result.unwrap_or_else(|e| panic!("got an error: {}", e));
+            let v_source_table_prompts = result.unwrap_or_else(|e| panic!("got an error: {}", e));
 
-            for json in v_json {
-                let json_string_pretty = serde_json::to_string_pretty(&json).expect("Failed to convert JSON to pretty string");
-                log!("JSON pretty {}",json_string_pretty);
+            for source_table_prompt in v_source_table_prompts {
+                let json_prompt_pretty = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON to pretty string");
+                log!("JSON pretty {}", json_prompt_pretty);
 
-                match ollama_client::send_request(json_string_pretty.as_str()).await {
-                    Ok(_) => log!("Ollama client request successful."),
-                    Err(e) => log!("Error in Ollama client request: {}", e),
-                }
+                let response_json: Option<serde_json::Value> = match ollama_client::send_request(json_prompt_pretty.as_str()).await {
+                    Ok(response_json) => {
+                        log!("Ollama client request successful.");
+                        Some(response_json)
+                    },
+                    Err(e) => {
+                        log!("Error in Ollama client request: {}", e);
+                        None
+                    }
+                };
+
+                log!("{:?}", serde_json::to_string_pretty(&response_json));
             }
         });
     }

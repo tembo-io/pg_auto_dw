@@ -24,3 +24,19 @@ CREATE TABLE IF NOT EXISTS source_objects
     current_flag CHAR(1) DEFAULT 'Y',   -- Indicator of current record
 	deleted_flag CHAR(1) DEFAULT 'N'
 );
+
+DROP TABLE IF EXISTS auto_dw.transformer_responses;
+
+CREATE TABLE IF NOT EXISTS transformer_responses
+(
+    pk_transformer_responses BIGSERIAL PRIMARY KEY,
+    fk_source_objects BIGINT,
+    model_name TEXT,
+    category TEXT,
+    confidence_score NUMERIC(3, 2),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
+    current_flag CHAR(1) DEFAULT 'Y',
+    CONSTRAINT fk_source_objects FOREIGN KEY (fk_source_objects) 
+	   	REFERENCES source_objects(pk_source_objects)
+		ON DELETE CASCADE
+);

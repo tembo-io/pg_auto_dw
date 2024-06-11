@@ -17,8 +17,7 @@ pub struct GenerateResponse {
     pub done: bool,
 }
 
-#[cfg(feature = "experimental")]
-pub async fn send_request(new_json: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let client = Client::new();
     
     let prompt_template = r#"
@@ -98,9 +97,8 @@ pub async fn send_request(new_json: &str) -> Result<(), Box<dyn std::error::Erro
         .json::<GenerateResponse>()
         .await?;
 
-    // Deserialize and pretty-print the response
+    // Deserialize
     let response_json: serde_json::Value = serde_json::from_str(&response.response)?;
-    log!("{}", serde_json::to_string_pretty(&response_json)?);
 
-    Ok(())
+    Ok(response_json)
 }
