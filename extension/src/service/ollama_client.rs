@@ -40,44 +40,87 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       }
 
       Expected Output:
+      
+      You are given a JSON object containing the schema name, table name, and details about each column in a table. This is source table information and downstream we are creating data vault tables. In this case, we are focusing on categorization for building hubs and satellites. Your task is to categorize each column into one of three categories: "Business Key," "Descriptor," or "Descriptor - Sensitive." The response should include the column number, the category type, and a confidence score for each categorization.
 
-      {
+      Hard Rules:
+      - If the column is a primary key, set "Category" to "Business Key."
+
+      Example Input:
+
+        {
         "Schema Name": "public",
         "Table Name": "customer",
         "Column Details": [
-          {
+            "Column No: 1 Named: customer_id of type: uuid And is a primary key.",
+            "Column No: 2 Named: city of type: character varying(255)",
+            "Column No: 3 Named: state of type: character(2)",
+            "Column No: 4 Named: zip of type: character varying(10)"
+        ]
+        }
+
+      Expected Output:
+      
+        {
+        "Schema Name": "public",
+        "Table Name": "customer",
+        "Column Details": [
+            {
             "Column No": 1,
             "Category": "Business Key",
-            "Confidence": 0.99
-          },
-          {
+            "Confidence": 0.99,
+            "Reason": "The column 'customer_id' is a primary key, which is a strong indicator of a Business Key."
+            },
+            {
             "Column No": 2,
             "Category": "Descriptor",
-            "Confidence": 0.85
-          },
-          {
+            "Confidence": 0.85,
+            "Reason": "The column 'city' provides general descriptive information about the customer, which is typically a Descriptor."
+            },
+            {
             "Column No": 3,
             "Category": "Descriptor",
-            "Confidence": 0.80
-          },
-          {
+            "Confidence": 0.80,
+            "Reason": "The column 'state' provides general descriptive information and is less likely to be sensitive, hence categorized as a Descriptor."
+            },
+            {
             "Column No": 4,
             "Category": "Descriptor - Sensitive",
-            "Confidence": 0.90
-          }
+            "Confidence": 0.90,
+            "Reason": "The column 'zip' contains potentially sensitive information about the customer's location, which requires careful handling."
+            }
         ]
-      }
+        }
 
       New JSON to Consider:
 
       {new_json}
 
-      Please categorize the columns in the new JSON according to the following categories:
+      Categorize the columns in the new JSON according to the following categories only:
       - "Business Key": Identifiers or primary keys.
       - "Descriptor": General descriptive attributes.
       - "Descriptor - Sensitive": Sensitive information that needs to be handled with care.
+      
+      If you have qualifiers, like it would be a "Descriptor - Sensitive" if this case is true.  Lower your confidence score and include that in the reasons.
+      
+      Hard Rule: Only categories into the 3 categories listed above.
 
-      Return the output JSON with the column number, the category type, and a confidence score for each column.
+      Return the output JSON with the column number, the category type, a confidence score, and reason for each column.
+
+      New JSON to Consider:
+
+      {new_json}
+
+      Categorize the columns in the new JSON according to the following categories only:
+      - "Business Key": Identifiers or primary keys.
+      - "Descriptor": General descriptive attributes.
+      - "Descriptor - Sensitive": Sensitive information that needs to be handled with care.
+      
+      If you have qualifiers, like it would be a "Descriptor - Sensitive" if this case is true.  Lower your confidence score and include that in the reasons.
+      
+      Hard Rule: Only categories into the 3 categories listed above.
+
+      Return the output JSON with the column number, the category type, a confidence score, and reason for each column.
       "#;
 
     // Inject new_json into the prompt_template

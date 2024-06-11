@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS source_objects;
 
 CREATE TABLE IF NOT EXISTS source_objects
 (
-    pk_source_objects bigserial PRIMARY KEY,  -- Auto-incrementing primary key with a larger range
+    pk_source_objects bigserial PRIMARY KEY,
 	schema_oid oid,
     schema_name name,
     schema_description text,
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS transformer_responses
     model_name TEXT,
     category TEXT,
     confidence_score NUMERIC(3, 2),
+    reason TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
     current_flag CHAR(1) DEFAULT 'Y',
     CONSTRAINT fk_source_objects FOREIGN KEY (fk_source_objects) 

@@ -130,7 +130,27 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                     }
                 };
 
-                log!("{:?}", serde_json::to_string_pretty(&response_json));
+                
+                // // Pushing to Table
+                // BackgroundWorker::transaction(|| {
+                //     Spi::connect(|client| {
+                //         log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json).unwrap());
+                        
+                //         // Deserialize JSON string to TableDetails struct
+                //         let table_details: TableDetails = serde_json::from_str(json_str)?;
+                //         response_json.
+                //         // client.update(query, limit, args)
+
+                //         // Check if the Option is Some and then deserialize
+                //         if let Some(json_value) = json_value {
+                //             let table_details: TableDetails = serde_json::from_value(json_value)?;
+                //             println!("{:?}", table_details);
+                //         } else {
+                //             println!("No JSON value provided");
+                //         }
+                //     })
+                // });
+                
             }
         });
     }
