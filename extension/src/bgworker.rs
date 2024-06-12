@@ -1,5 +1,6 @@
 use pgrx::bgworkers::*;
 use pgrx::prelude::*;
+use serde::Serialize;
 
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -8,9 +9,13 @@ use crate::model::source_objects::GenerationTableDetail;
 use crate::queries;
 
 use crate::service::ollama_client;
-use pgrx::Json;
 
 use crate::model::source_objects;
+
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+use serde_json::from_value;
+
 
 
 // TODO: Create initial pattern for injection of public schema.
@@ -90,7 +95,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
 
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
-        runtime.block_on(async {
+        
 
             // Load Prompts into Results
             let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
@@ -123,49 +128,68 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
 
             // Process Each Prompt
             for source_table_prompt in v_source_table_prompts {
-
-                
                 
                 let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Detailsto pretty string");
                 log!("JSON pretty Table Details {}", table_details_json_str);
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
                 log!("JSON pretty Table Column Links{}", table_column_link_json_str);
+                let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_str(&table_column_link_json_str).ok();
+                log!("Test 456 {:?}", table_column_links_o);
 
-                // Get Generation
-                let generation_json_o: Option<serde_json::Value> = match ollama_client::send_request(table_details_json_str.as_str()).await {
-                    Ok(response_json) => {
-                        log!("Ollama client request successful.");
-                        Some(response_json)
-                    },
-                    Err(e) => {
-                        log!("Error in Ollama client request: {}", e);
-                        None
-                    }
-                };
+                // let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_value(source_table_prompt.table_column_links).ok();
+                
+                // Define generation_json_o outside the runtime.block_on block
+                let mut generation_json_o: Option<serde_json::Value> = None;
+
+                // Run the async block
+                runtime.block_on(async {
+                    // Get Generation
+                    generation_json_o = match ollama_client::send_request(table_details_json_str.as_str()).await {
+                        Ok(response_json) => {
+                            log!("Ollama client request successful.");
+                            Some(response_json)
+                        },
+                        Err(e) => {
+                            log!("Error in Ollama client request: {}", e);
+                            None
+                        }
+                    };
+                });
 
 
                 log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&generation_json_o).unwrap());
 
                 // Return Optional 
-                match generation_json_o {
-                    Some(generation_json) => {
-                        let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = match serde_json::from_value(generation_json) {
-                            Ok(generation_table_detail) => {generation_table_detail},
-                            Err(_) => {None}
-                        };
-                        match generation_table_detail_o {
-                            Some(generation_table_detail) => {
-                                log!("Generaeted Table Details Unwrapped {:?}", generation_table_detail);
-                            }
-                            None => {log!("Unable to unwrap GenerationTableDetail");}
-                        }
+                // match generation_json_o {
+                //     Some(generation_json) => {
+                //         let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = match serde_json::from_value(generation_json) {
+                //             Ok(generation_table_detail) => {generation_table_detail},
+                //             Err(_) => {None}
+                //         };
+                //         match generation_table_detail_o {
+                //             Some(generation_table_detail) => {
+                //                 log!("Generaeted Table Details Unwrapped {:?}", generation_table_detail);
+                //             }
+                //             None => {log!("Unable to unwrap GenerationTableDetail");}
+                //         }
 
-                    }
-                    None => {}
-                }
+                //     }
+                //     None => {}
+                // }
 
-                // let generation_json: Result<GenerationTableDetail, serde_json::Error> = serde_json::from_value(generation_json_o?);
+                // hello(generation_json_o);
+                let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = deserialize_option(generation_json_o);
+                // let table_links_o: Option<source_objects::GenerationTableDetail> = deserialize_option(serde_json::to_value(&source_table_prompt.table_column_links).ok());
+
+                // let x:  Option<source_objects::GenerationTableDetail> = serde_json::from_value(source_table_prompt.table_column_links.clone);
+                // log!("Test 123 {:?}", generation_table_detail_o);
+                
+
+                
+
+                // let generation_json: Result<GenerationTableDetail, serde_json::Error> = serde_json::from_value(generation_json_o);
+                // log!("Generaeted Table Details Wrapped {:?}", generation_json);
                 
                 // // Pushing to Table
                 // BackgroundWorker::transaction(|| {
@@ -191,7 +215,16 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 // });
                 
             }
-        });
+        
     }
     log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
+}
+
+fn deserialize_option<T>(json_option: Option<serde_json::Value>) -> Option<T>
+where
+    T: DeserializeOwned
+{
+    json_option.and_then(|json| {
+        from_value::<T>(json).ok()
+    })
 }
