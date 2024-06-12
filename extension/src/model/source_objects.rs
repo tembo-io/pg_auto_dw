@@ -8,8 +8,18 @@ pub struct SourceTablePrompt {
     pub table_details: JsonValue,
 }
 
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ColumnDetail {
+pub struct Response {
+    #[serde(rename = "Table ID")]
+    table_id: u32,
+    #[serde(rename = "Generation")]
+    generation: GenerationTableDetail,
+    // #[serde(rename = "Generation")]
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GenerationColumnDetail {
     #[serde(rename = "Category")]
     category: String,
     #[serde(rename = "Column No")]
@@ -21,11 +31,25 @@ pub struct ColumnDetail {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TableDetails {
+pub struct GenerationTableDetail {
     #[serde(rename = "Schema Name")]
     schema_name: String,
     #[serde(rename = "Table Name")]
     table_name: String,
     #[serde(rename = "Column Details")]
-    column_details: Vec<ColumnDetail>,
+    response_column_details: Vec<GenerationColumnDetail>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ColumnLink {
+    #[serde(rename = "Column Ordinal Position")]
+    column_ordinal_position: i32,
+    #[serde(rename = "PK Source Objects")]
+    pk_source_objects: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TableLinks {
+    #[serde(rename = "Column Links")]
+    column_links: Vec<ColumnLink>,
 }

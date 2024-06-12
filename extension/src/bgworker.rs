@@ -4,6 +4,7 @@ use pgrx::prelude::*;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
+use crate::model::source_objects::GenerationTableDetail;
 use crate::queries;
 
 use crate::service::ollama_client;
@@ -90,6 +91,8 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
         runtime.block_on(async {
+
+            // Load Prompts into Results
             let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
                     log!("Client BG Worker - Source Objects JSON Pulling.");
@@ -115,13 +118,22 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 })
             });
 
+            // Get Prompts for Processing
             let v_source_table_prompts = result.unwrap_or_else(|e| panic!("got an error: {}", e));
 
+            // Process Each Prompt
             for source_table_prompt in v_source_table_prompts {
-                let json_prompt_pretty = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON to pretty string");
-                log!("JSON pretty {}", json_prompt_pretty);
 
-                let response_json_o: Option<serde_json::Value> = match ollama_client::send_request(json_prompt_pretty.as_str()).await {
+                
+                
+                let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Detailsto pretty string");
+                log!("JSON pretty Table Details {}", table_details_json_str);
+
+                let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
+                log!("JSON pretty Table Column Links{}", table_column_link_json_str);
+
+                // Get Generation
+                let generation_json_o: Option<serde_json::Value> = match ollama_client::send_request(table_details_json_str.as_str()).await {
                     Ok(response_json) => {
                         log!("Ollama client request successful.");
                         Some(response_json)
@@ -132,44 +144,51 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                     }
                 };
 
-                
-                // Pushing to Table
-                BackgroundWorker::transaction(|| {
-                    Spi::connect(|client| {
-                        log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json_o).unwrap());
-                        
-                        match response_json_o {
-                            Some(response_json) => {
-                                log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json).unwrap());
-                                // let table_details = serde_json::from_value(response_json);
-                                let table_details: Option<source_objects::TableDetails> = match serde_json::from_value(response_json) {
-                                    Ok(details) => details,
-                                    Err(e) => {
-                                        None
-                                    }
-                                };
-                                log!("Json to table_details{:?}", table_details);
+
+                log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&generation_json_o).unwrap());
+
+                // Return Optional 
+                match generation_json_o {
+                    Some(generation_json) => {
+                        let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = match serde_json::from_value(generation_json) {
+                            Ok(generation_table_detail) => {generation_table_detail},
+                            Err(_) => {None}
+                        };
+                        match generation_table_detail_o {
+                            Some(generation_table_detail) => {
+                                log!("Generaeted Table Details Unwrapped {:?}", generation_table_detail);
                             }
-                            None => {}
+                            None => {log!("Unable to unwrap GenerationTableDetail");}
                         }
 
-                                // Add the type annotation explicitly
+                    }
+                    None => {}
+                }
+
+                // let generation_json: Result<GenerationTableDetail, serde_json::Error> = serde_json::from_value(generation_json_o?);
+                
+                // // Pushing to Table
+                // BackgroundWorker::transaction(|| {
+                //     Spi::connect(|client| {
+
+
+                //                 // Add the type annotation explicitly
         
 
-                        // // Deserialize JSON string to TableDetails struct
-                        // let table_details: TableDetails = serde_json::from_str(json_str)?;
-                        // response_json.
-                        // // client.update(query, limit, args)
+                //         // // Deserialize JSON string to TableDetails struct
+                //         // let table_details: TableDetails = serde_json::from_str(json_str)?;
+                //         // response_json.
+                //         // // client.update(query, limit, args)
 
-                        // // Check if the Option is Some and then deserialize
-                        // if let Some(json_value) = json_value {
-                        //     let table_details: TableDetails = serde_json::from_value(json_value)?;
-                        //     println!("{:?}", table_details);
-                        // } else {
-                        //     println!("No JSON value provided");
-                        // }
-                    })
-                });
+                //         // // Check if the Option is Some and then deserialize
+                //         // if let Some(json_value) = json_value {
+                //         //     let table_details: TableDetails = serde_json::from_value(json_value)?;
+                //         //     println!("{:?}", table_details);
+                //         // } else {
+                //         //     println!("No JSON value provided");
+                //         // }
+                //     })
+                // });
                 
             }
         });
