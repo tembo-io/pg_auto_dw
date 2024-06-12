@@ -1,4 +1,5 @@
 use pgrx::Json as JsonValue;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct SourceTablePrompt {
@@ -7,19 +8,24 @@ pub struct SourceTablePrompt {
     pub table_details: JsonValue,
 }
 
-use serde::{Deserialize, Serialize};
-
 #[derive(Debug, Serialize, Deserialize)]
-struct ColumnDetail {
-    Category: String,
-    Column_No: i32,
-    Confidence: f64,
-    Reason: String,
+pub struct ColumnDetail {
+    #[serde(rename = "Category")]
+    category: String,
+    #[serde(rename = "Column No")]
+    column_no: i32,
+    #[serde(rename = "Confidence")]
+    confidence: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct TableDetails {
-    Schema_Name: String,
-    Table_Name: String,
-    Column_Details: Vec<ColumnDetail>,
+pub struct TableDetails {
+    #[serde(rename = "Schema Name")]
+    schema_name: String,
+    #[serde(rename = "Table Name")]
+    table_name: String,
+    #[serde(rename = "Column Details")]
+    column_details: Vec<ColumnDetail>,
 }

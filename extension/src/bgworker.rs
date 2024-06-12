@@ -106,6 +106,8 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                                                                                         table_column_links: table_column_links, 
                                                                                         table_details: table_details
                                                                                     };
+
+                        
                         
                         v_source_table_prompts.push(source_table_prompt)
                     }
@@ -119,7 +121,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 let json_prompt_pretty = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON to pretty string");
                 log!("JSON pretty {}", json_prompt_pretty);
 
-                let response_json: Option<serde_json::Value> = match ollama_client::send_request(json_prompt_pretty.as_str()).await {
+                let response_json_o: Option<serde_json::Value> = match ollama_client::send_request(json_prompt_pretty.as_str()).await {
                     Ok(response_json) => {
                         log!("Ollama client request successful.");
                         Some(response_json)
@@ -131,25 +133,43 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 };
 
                 
-                // // Pushing to Table
-                // BackgroundWorker::transaction(|| {
-                //     Spi::connect(|client| {
-                //         log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json).unwrap());
+                // Pushing to Table
+                BackgroundWorker::transaction(|| {
+                    Spi::connect(|client| {
+                        log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json_o).unwrap());
                         
-                //         // Deserialize JSON string to TableDetails struct
-                //         let table_details: TableDetails = serde_json::from_str(json_str)?;
-                //         response_json.
-                //         // client.update(query, limit, args)
+                        match response_json_o {
+                            Some(response_json) => {
+                                log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&response_json).unwrap());
+                                // let table_details = serde_json::from_value(response_json);
+                                let table_details: Option<source_objects::TableDetails> = match serde_json::from_value(response_json) {
+                                    Ok(details) => details,
+                                    Err(e) => {
+                                        None
+                                    }
+                                };
+                                log!("Json to table_details{:?}", table_details);
+                            }
+                            None => {}
+                        }
 
-                //         // Check if the Option is Some and then deserialize
-                //         if let Some(json_value) = json_value {
-                //             let table_details: TableDetails = serde_json::from_value(json_value)?;
-                //             println!("{:?}", table_details);
-                //         } else {
-                //             println!("No JSON value provided");
-                //         }
-                //     })
-                // });
+                                // Add the type annotation explicitly
+        
+
+                        // // Deserialize JSON string to TableDetails struct
+                        // let table_details: TableDetails = serde_json::from_str(json_str)?;
+                        // response_json.
+                        // // client.update(query, limit, args)
+
+                        // // Check if the Option is Some and then deserialize
+                        // if let Some(json_value) = json_value {
+                        //     let table_details: TableDetails = serde_json::from_value(json_value)?;
+                        //     println!("{:?}", table_details);
+                        // } else {
+                        //     println!("No JSON value provided");
+                        // }
+                    })
+                });
                 
             }
         });
