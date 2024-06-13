@@ -157,7 +157,6 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                     };
                 });
 
-
                 log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&generation_json_o).unwrap());
 
                 // Return Optional 
@@ -185,34 +184,53 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                 // let x:  Option<source_objects::GenerationTableDetail> = serde_json::from_value(source_table_prompt.table_column_links.clone);
                 // log!("Test 123 {:?}", generation_table_detail_o);
                 
+                let table_column_links = table_column_links_o.unwrap();
+                let generation_table_detail = generation_table_detail_o.unwrap();
 
+                // Build the SQL INSERT statement
+                let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, confidence_score, reason) VALUES ");
+
+                for (index, column_link) in table_column_links.column_links.iter().enumerate() {
+                    log!("{}: Table Column Link Key: {} Ordinal Position {}", index, column_link.pk_source_objects, column_link.column_ordinal_position);
+
+                    let not_last = index != table_column_links.column_links.len() - 1;
+
+                    let index_o = generation_table_detail.response_column_details.iter().position(|r| r.column_no == column_link.column_ordinal_position);
+                    match index_o {
+                        Some(index) => {
+                            let column_detail = &generation_table_detail.response_column_details[index];
+
+                            let column_no = &column_detail.column_no;
+                            let category = &column_detail.category.replace("'", "''");
+                            let confidence_score = &column_detail.confidence;
+                            let reason = &column_detail.reason.replace("'", "''");
+                            let pk_source_objects = column_link.pk_source_objects;
+                            
+                            let model_name = "Mixtral";
+
+                            log!("Key {} has values Column No: {} Category: {} Confidence: {} Reason: {}", pk_source_objects, column_no, category, confidence_score, reason);
+                            
+                            //(11, 'Mistral', 'Business Key', 0.99, 'The column ''seller_id'' is a primary key, which is a strong indicator of a Business Key.',
+                            if not_last {
+                                // This is the last iteration
+                                insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, confidence_score, reason));
+                            } else {
+                                insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, confidence_score, reason));
+                            }
+                        }
+                        None => {break;}
+                    }
+                }
                 
-
-                // let generation_json: Result<GenerationTableDetail, serde_json::Error> = serde_json::from_value(generation_json_o);
-                // log!("Generaeted Table Details Wrapped {:?}", generation_json);
+                log!("Insert SQL: {}", insert_sql);
                 
-                // // Pushing to Table
-                // BackgroundWorker::transaction(|| {
-                //     Spi::connect(|client| {
-
-
-                //                 // Add the type annotation explicitly
-        
-
-                //         // // Deserialize JSON string to TableDetails struct
-                //         // let table_details: TableDetails = serde_json::from_str(json_str)?;
-                //         // response_json.
-                //         // // client.update(query, limit, args)
-
-                //         // // Check if the Option is Some and then deserialize
-                //         // if let Some(json_value) = json_value {
-                //         //     let table_details: TableDetails = serde_json::from_value(json_value)?;
-                //         //     println!("{:?}", table_details);
-                //         // } else {
-                //         //     println!("No JSON value provided");
-                //         // }
-                //     })
-                // });
+                // Push Generation to TABLE TRANSFORMER_RESPONSES 
+                BackgroundWorker::transaction(|| {
+                    Spi::connect(|mut client| {
+                        _ = client.update(insert_sql.as_str(), None, None);
+                        log!("TABLE TRANSFORMER_RESPONSES UPDATTED!");
+                    })
+                });
                 
             }
         

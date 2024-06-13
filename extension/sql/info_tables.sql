@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS transformer_responses
     confidence_score NUMERIC(3, 2),
     reason TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
-    current_flag CHAR(1) DEFAULT 'Y',
     CONSTRAINT fk_source_objects FOREIGN KEY (fk_source_objects) 
 	   	REFERENCES source_objects(pk_source_objects)
 		ON DELETE CASCADE
