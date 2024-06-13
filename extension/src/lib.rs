@@ -149,7 +149,7 @@ fn source_column() -> Result<
     >,
     spi::Error,
 > {
-    let query: &str = queries::SOURCE_COLUMN_SAMPLE;
+    let query: &str = queries::SOURCE_COLUMN;
 
     info!("Evaluation of TABLE customer");
     Spi::connect(|client| {

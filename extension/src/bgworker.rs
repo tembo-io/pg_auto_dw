@@ -1,11 +1,9 @@
 use pgrx::bgworkers::*;
 use pgrx::prelude::*;
-use serde::Serialize;
 
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
-use crate::model::source_objects::GenerationTableDetail;
 use crate::queries;
 
 use crate::service::ollama_client;
@@ -13,7 +11,6 @@ use crate::service::ollama_client;
 use crate::model::source_objects;
 
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
 use serde_json::from_value;
 
 
@@ -159,30 +156,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
 
                 log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&generation_json_o).unwrap());
 
-                // Return Optional 
-                // match generation_json_o {
-                //     Some(generation_json) => {
-                //         let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = match serde_json::from_value(generation_json) {
-                //             Ok(generation_table_detail) => {generation_table_detail},
-                //             Err(_) => {None}
-                //         };
-                //         match generation_table_detail_o {
-                //             Some(generation_table_detail) => {
-                //                 log!("Generaeted Table Details Unwrapped {:?}", generation_table_detail);
-                //             }
-                //             None => {log!("Unable to unwrap GenerationTableDetail");}
-                //         }
-
-                //     }
-                //     None => {}
-                // }
-
-                // hello(generation_json_o);
                 let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = deserialize_option(generation_json_o);
-                // let table_links_o: Option<source_objects::GenerationTableDetail> = deserialize_option(serde_json::to_value(&source_table_prompt.table_column_links).ok());
-
-                // let x:  Option<source_objects::GenerationTableDetail> = serde_json::from_value(source_table_prompt.table_column_links.clone);
-                // log!("Test 123 {:?}", generation_table_detail_o);
                 
                 let table_column_links = table_column_links_o.unwrap();
                 let generation_table_detail = generation_table_detail_o.unwrap();

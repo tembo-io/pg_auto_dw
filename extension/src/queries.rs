@@ -151,58 +151,108 @@ pub const SOURCE_TABLE_SAMPLE: &str = r#"
     SELECT * FROM Temp_Data;
         "#;
 
-pub const SOURCE_COLUMN_SAMPLE: &str = r#"
-        WITH Temp_Data (schema, "table", "column", status, confidence_level, status_response) AS (
-            VALUES
-            ('PUBLIC', 'CUSTOMER', 'CUSTOMER_ID', 'Ready', '10', 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'ACCOUNT_CREATION_DATE', 'Ready', '10', 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'MEMBERSHIP_TYPE', 'Ready', '9', 'Ready: Column...'),
-            ('PUBLIC', 'CUSTOMER', 'ZIP', 'Requires Attention', '6', 'Requires Attention: Column cannot be appropriately categorized as it may contain sensitive data.  Specifically, if the zip is an extended zip it may be considered PII.'),
-            ('PUBLIC', 'CUSTOMER', 'EMAIL', 'Ready', '10', 'Ready: Column...')
+pub const SOURCE_COLUMN: &str = r#"
+        WITH
+        source_objects_tranformation_cal AS (
+            SELECT 
+                MAX(pk_transformer_responses)AS max_pk_transformer_response
+            FROM auto_dw.transformer_responses AS t
+            GROUP BY fk_source_objects
+        ),
+        source_object_transformation_latest AS (
+            SELECT t.* FROM auto_dw.transformer_responses AS t
+            JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
         )
-        SELECT * FROM Temp_Data;
+        SELECT 
+            s.schema_name::TEXT AS schema, 
+            s.table_name::TEXT AS table, 
+            s.column_name::TEXT AS column,
+            CASE
+                WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
+                WHEN t.confidence_score >= .8 THEN 'Ready'
+                ELSE 'Requires Attention'
+            END AS status,
+            CASE 
+                WHEN t.confidence_score IS NOT NULL THEN CONCAT((t.confidence_score * 100)::INT::TEXT, '%')
+                ELSE '-'
+            END AS confidence_level,
+            CASE 
+                WHEN t.confidence_score IS NOT NULL THEN 
+                    (
+                    'Status: ' ||
+                    CASE
+                        WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
+                        WHEN t.confidence_score >= .8 THEN 'Ready'
+                        ELSE 'Requires Attention'
+                    END || ': ' ||
+                    'Model: ' || model_name || 
+                    ' categorized this column as a ' || category || 
+                    ' with a confidence of ' || CONCAT((t.confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+                    'Model Reasoning: ' || t.reason
+                    )
+                ELSE '-'
+            END AS status_response
+        FROM auto_dw.source_objects AS s
+        LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
+        WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
+        ORDER BY s.schema_name, s.table_name, s.column_ordinal_position;
         "#;
 
 
 
 #[cfg(feature = "experimental")]
 pub const SOURCE_OBJECTS_JSON: &str = r#"
-        WITH source_table_details AS (
-            SELECT *
-            FROM auto_dw.source_objects
-            WHERE current_flag = 'Y' AND deleted_flag = 'N'
-        ),
-        source_prep AS (
-            SELECT 
-                table_oid,
-                column_ordinal_position,
-                json_build_object(
-                    'PK Source Objects', pk_source_objects,
-                    'Column Ordinal Position', column_ordinal_position
-                ) AS column_link,
-                schema_name, table_name, 
-                'Column No: ' 	|| column_ordinal_position 	|| ' ' ||
-                'Named: '  		|| column_name 				|| ' ' ||
-                'of type: ' 	|| column_type_name 		|| ' ' ||
-                CASE
-                    WHEN column_pk_ind =1 THEN 'And is a primary key.' ELSE ''
-                END 
-                AS column_details 
-            FROM source_table_details
-        )
-        SELECT
-        table_oid,
-        json_build_object(
-            'Column Links', array_agg(column_link ORDER BY column_ordinal_position ASC)
-        ) AS table_column_links,
-        json_build_object(
-            'Schema Name', schema_name,
-            'Table Name', table_name,
-            'Column Details', array_agg(column_details ORDER BY column_ordinal_position ASC)
-        ) AS table_details
-        FROM source_prep
-        GROUP BY table_oid, schema_name, table_name
-        ;
+            WITH
+            table_tranformation_time_cal AS (
+                SELECT 
+                    s.table_oid, 
+                    MAX(s.valid_from) AS max_table_update, 
+                    MAX(t.created_at) AS max_table_transformer_generation
+                FROM auto_dw.source_objects AS s
+                LEFT JOIN auto_dw.transformer_responses AS t ON s.pk_source_objects = t.fk_source_objects
+                WHERE current_flag = 'Y' AND deleted_flag = 'N'
+                GROUP BY table_oid),
+            tables_requiring_transformation AS (
+                SELECT DISTINCT table_oid FROM table_tranformation_time_cal
+                WHERE (max_table_update > max_table_transformer_generation) OR max_table_transformer_generation IS NULL
+            ),
+            source_table_details AS (
+                SELECT s.*
+                FROM auto_dw.source_objects AS s
+                JOIN tables_requiring_transformation AS t ON s.table_oid = t.table_oid
+                WHERE current_flag = 'Y' AND deleted_flag = 'N'
+            ),
+            source_prep AS (
+                SELECT 
+                    table_oid,
+                    column_ordinal_position,
+                    json_build_object(
+                        'PK Source Objects', pk_source_objects,
+                        'Column Ordinal Position', column_ordinal_position
+                    ) AS column_link,
+                    schema_name, table_name, 
+                    'Column No: ' 	|| column_ordinal_position 	|| ' ' ||
+                    'Named: '  		|| column_name 				|| ' ' ||
+                    'of type: ' 	|| column_type_name 		|| ' ' ||
+                    CASE
+                        WHEN column_pk_ind =1 THEN 'And is a primary key.' ELSE ''
+                    END 
+                    AS column_details 
+                FROM source_table_details
+            )
+            SELECT
+            table_oid,
+            json_build_object(
+                'Column Links', array_agg(column_link ORDER BY column_ordinal_position ASC)
+            ) AS table_column_links,
+            json_build_object(
+                'Schema Name', schema_name,
+                'Table Name', table_name,
+                'Column Details', array_agg(column_details ORDER BY column_ordinal_position ASC)
+            ) AS table_details
+            FROM source_prep
+            GROUP BY table_oid, schema_name, table_name
+            ;
         "#;
 
 #[no_mangle]
