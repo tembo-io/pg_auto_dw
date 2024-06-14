@@ -78,9 +78,9 @@ pub const SELLER_DV: &str = r#"
         load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
         record_source VARCHAR NOT NULL,
         sat_seller_hd VARCHAR NOT NULL,
-    city VARCHAR(255),
-    state CHAR(2),
-    zip_5 VARCHAR(10)
+        city VARCHAR(255),
+        state CHAR(2),
+        zip_5 VARCHAR(10)
     );
 
     INSERT INTO public.sat_seller (
@@ -169,7 +169,7 @@ pub const SOURCE_COLUMN: &str = r#"
             s.column_name::TEXT AS column,
             CASE
                 WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                WHEN t.confidence_score >= .8 THEN 'Ready'
+                WHEN t.confidence_score >= .8 THEN 'Ready to Deploy'
                 ELSE 'Requires Attention'
             END AS status,
             CASE 
@@ -182,7 +182,7 @@ pub const SOURCE_COLUMN: &str = r#"
                     'Status: ' ||
                     CASE
                         WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                        WHEN t.confidence_score >= .8 THEN 'Ready'
+                        WHEN t.confidence_score >= .8 THEN 'Ready to Deploy'
                         ELSE 'Requires Attention'
                     END || ': ' ||
                     'Model: ' || model_name || 
@@ -512,7 +512,65 @@ WHERE source_objects.column_ordinal_position IS NULL;
 
 DROP TABLE IF EXISTS temp_source_objects;
 "#, schema_pattern_include, table_pattern_include, column_pattern_include, schema_pattern_exclude, table_pattern_exclude, column_pattern_exclude)
+}
 
-
-
+#[no_mangle]
+pub fn insert_into_build_call(build_id: &str, build_flag: &str, build_status: &str, status: &str) -> String {
+    format!(r#"
+    INSERT INTO auto_dw.build_call (fk_transformer_responses, build_id, build_flag, build_status)
+    WITH
+    source_objects_tranformation_cal AS (
+        SELECT 
+            MAX(pk_transformer_responses)AS max_pk_transformer_response
+        FROM auto_dw.transformer_responses AS t
+        GROUP BY fk_source_objects
+    ),
+    source_object_transformation_latest AS (
+        SELECT t.* FROM auto_dw.transformer_responses AS t
+        JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
+    ),
+    sour_object_status AS (
+        SELECT 
+            t.pk_transformer_responses,
+            s.schema_name::TEXT AS schema, 
+            s.table_name::TEXT AS table, 
+            s.column_name::TEXT AS column,
+            CASE
+                WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
+                WHEN t.confidence_score >= .8 THEN 'Ready to Deploy'
+                ELSE 'Requires Attention'
+            END AS status,
+            CASE 
+                WHEN t.confidence_score IS NOT NULL THEN CONCAT((t.confidence_score * 100)::INT::TEXT, '%')
+                ELSE '-'
+            END AS confidence_level,
+            CASE 
+                WHEN t.confidence_score IS NOT NULL THEN 
+                    (
+                    'Status: ' ||
+                    CASE
+                        WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
+                        WHEN t.confidence_score >= .8 THEN 'Ready to Deploy'
+                        ELSE 'Requires Attention'
+                    END || ': ' ||
+                    'Model: ' || model_name || 
+                    ' categorized this column as a ' || category || 
+                    ' with a confidence of ' || CONCAT((t.confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+                    'Model Reasoning: ' || t.reason
+                    )
+                ELSE '-'
+            END AS status_response
+        FROM auto_dw.source_objects AS s
+        LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
+        WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
+        ORDER BY s.schema_name, s.table_name, s.column_ordinal_position
+        )
+    SELECT 
+        pk_transformer_responses AS fk_transformer_responses,
+        '{}' AS build_id,
+        '{}' AS build_flag,
+        '{}' AS build_status
+    FROM sour_object_status
+    WHERE status = '{}';
+"#, build_id, build_flag, build_status, status)
 }

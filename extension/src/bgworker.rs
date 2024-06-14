@@ -91,7 +91,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
 
 
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(90))) {
+    while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
         
 
             // Load Prompts into Results

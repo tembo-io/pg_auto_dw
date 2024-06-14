@@ -40,3 +40,18 @@ CREATE TABLE IF NOT EXISTS transformer_responses
 	   	REFERENCES source_objects(pk_source_objects)
 		ON DELETE CASCADE
 );
+
+DROP TABLE IF EXISTS build_call;
+
+CREATE TABLE IF NOT EXISTS build_call
+(
+    pk_build_call BIGSERIAL PRIMARY KEY,
+    fk_transformer_responses BIGINT,
+    build_id VARCHAR(100),
+	build_flag VARCHAR(100),
+    build_status VARCHAR(100),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
+    CONSTRAINT fk_transformer_responses FOREIGN KEY (fk_transformer_responses) 
+	   	REFERENCES auto_dw.transformer_responses(pk_transformer_responses)
+		ON DELETE CASCADE
+);

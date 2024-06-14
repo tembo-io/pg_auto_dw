@@ -1,4 +1,5 @@
 pub use pgrx::prelude::*;
+use uuid::Uuid;
 
 pgrx::pg_module_magic!();
 
@@ -19,18 +20,28 @@ fn hello_pg_auto_dw() -> &'static str {
     "Hello, pg_auto_dw"
 }
 
-#[pg_extern(name="go")]
-fn go(flag: &str, status: &str) -> &'static str {
-    let _ = flag;
-    let _ = status;
-    _ = Spi::run(queries::SELLER_DV);
-    queries::GO_OUTPUT
-}
+// #[pg_extern(name="go")]
+// fn go(flag: &str, status: &str) -> &'static str {
+//     let _ = flag;
+//     let _ = status;
+//     _ = Spi::run(queries::SELLER_DV);
+//     queries::GO_OUTPUT
+// }
 
 #[pg_extern(name="go")]
-fn go_no() -> &'static str {
-    _ = Spi::run(queries::SELLER_DV);
-    queries::GO_OUTPUT
+fn go_no() -> String {
+    let build_id = Uuid::new_v4();
+    let message = format!("Build ID: {} | Data warehouse tables are currently being built.", build_id);
+    info!("{}", message);
+    let build_id = build_id.to_string();
+    let build_flag = "Build";
+    let build_status = "RTD";
+    let status = "Ready to Deploy";
+
+    let query = &queries::insert_into_build_call(&build_id, &build_flag, &build_status, &status);
+    log!("Executing Query: {}", query);
+    _ = Spi::run(query);
+    message
 }
 
 #[pg_extern]
