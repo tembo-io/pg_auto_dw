@@ -236,7 +236,8 @@ pub const SOURCE_OBJECTS_JSON: &str = r#"
                     'of type: ' 	|| column_type_name 		|| ' ' ||
                     CASE
                         WHEN column_pk_ind =1 THEN 'And is a primary key.' ELSE ''
-                    END 
+                    END  ||
+				    'Column Comments: ' || column_description
                     AS column_details 
                 FROM source_table_details
             )

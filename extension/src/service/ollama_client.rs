@@ -32,10 +32,10 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
         "Schema Name": "public",
         "Table Name": "customer",
         "Column Details": [
-          "Column No: 1 Named: customer_id of type: uuid And is a primary key.",
-          "Column No: 2 Named: city of type: character varying(255)",
-          "Column No: 3 Named: state of type: character(2)",
-          "Column No: 4 Named: zip of type: character varying(10)"
+          "Column No: 1 Named: customer_id of type: uuid And is a primary key.  Column Comments: NA",
+          "Column No: 2 Named: city of type: character varying(255) Column Comments: NA",
+          "Column No: 3 Named: state of type: character(2) Column Comments: NA",
+          "Column No: 4 Named: zip of type: character varying(10) Column Comments: NA"
         ]
       }
 
@@ -52,10 +52,10 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
         "Schema Name": "public",
         "Table Name": "customer",
         "Column Details": [
-            "Column No: 1 Named: customer_id of type: uuid And is a primary key.",
-            "Column No: 2 Named: city of type: character varying(255)",
-            "Column No: 3 Named: state of type: character(2)",
-            "Column No: 4 Named: zip of type: character varying(10)"
+            "Column No: 1 Named: customer_id of type: uuid And is a primary key. Column Comments: NA",
+            "Column No: 2 Named: city of type: character varying(255) Column Comments: NA",
+            "Column No: 3 Named: state of type: character(2) Column Comments: NA",
+            "Column No: 4 Named: zip of type: character varying(10) Column Comments: NA"
         ]
         }
 
@@ -119,6 +119,8 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       If you have qualifiers, like it would be a "Descriptor - Sensitive" if this case is true.  Lower your confidence score and include that in the reasons.
       
       Hard Rule: Only categories into the 3 categories listed above.
+
+      Use Column Comments as a guide for categorization if available they are available.  Column Comments: NA, means no information is available.  Consider comments a direction from the user.  For example, if you deem the column as sensitive, but comments indicate it is not sensitive, consider it as not sensitive.
 
       Return the output JSON with the column number, the category type, a confidence score, and reason for each column.
       "#;
