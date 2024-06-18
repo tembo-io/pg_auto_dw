@@ -575,3 +575,25 @@ pub fn insert_into_build_call(build_id: &str, build_flag: &str, build_status: &s
     WHERE status = '{}';
 "#, build_id, build_flag, build_status, status)
 }
+
+#[no_mangle]
+pub fn build_object_pull(build_id: &str) -> String {
+    format!(r#"
+WITH system AS (
+	SELECT system_identifier AS id FROM pg_control_system() LIMIT 1
+)
+SELECT 
+  schema_name, 
+  table_name, 
+  category AS column_category, 
+  column_name, 
+  column_type_name, 
+  system.id AS system_id,
+  so.table_oid,
+  so.column_ordinal_position
+FROM system, auto_dw.build_call AS bc
+LEFT JOIN auto_dw.transformer_responses AS t ON bc.fk_transformer_responses = t.pk_transformer_responses
+LEFT JOIN auto_dw.source_objects AS so ON t.fk_source_objects = so.pk_source_objects
+WHERE build_id = '{}';
+"#, build_id)
+}
