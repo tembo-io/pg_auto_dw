@@ -583,14 +583,14 @@ WITH system AS (
 	SELECT system_identifier AS id FROM pg_control_system() LIMIT 1
 )
 SELECT 
-  schema_name, 
-  table_name, 
-  category AS column_category, 
-  column_name, 
-  column_type_name, 
-  system.id AS system_id,
-  so.table_oid,
-  so.column_ordinal_position
+schema_name::TEXT AS schema_name, 
+table_name::TEXT AS table_name, 
+category::TEXT AS column_category, 
+column_name::TEXT AS column_name, 
+column_type_name::TEXT AS column_type_name, 
+system.id::BIGINT AS system_id,
+so.table_oid::OID as table_oid,
+so.column_ordinal_position::SMALLINT AS column_ordinal_position
 FROM system, auto_dw.build_call AS bc
 LEFT JOIN auto_dw.transformer_responses AS t ON bc.fk_transformer_responses = t.pk_transformer_responses
 LEFT JOIN auto_dw.source_objects AS so ON t.fk_source_objects = so.pk_source_objects

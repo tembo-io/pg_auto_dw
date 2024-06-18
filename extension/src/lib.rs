@@ -38,13 +38,13 @@ fn go_no() -> String {
     let build_status = "RTD";
     let status = "Ready to Deploy";
 
-    let query = &queries::insert_into_build_call(&build_id, &build_flag, &build_status, &status);
-    log!("Executing Query: {}", query);
-    _ = Spi::run(query);
+    let query_insert = &queries::insert_into_build_call(&build_id, &build_flag, &build_status, &status);
+    log!("Executing Query insert_into_build_call: {}", query_insert);
+    _ = Spi::run(query_insert);
 
-    // let query = &queries::build_object_pull(&build_id);
-    // log!("Executing Query: {}", query);
-    controller::dv_builder::build_dv(query);
+    let query_build_pull = &queries::build_object_pull(&build_id);
+    log!("Executing Query build_object_pull: {}", query_build_pull);
+    controller::dv_builder::build_dv(query_build_pull);
 
     message
 }
