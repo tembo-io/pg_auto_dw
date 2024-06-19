@@ -11,7 +11,6 @@ pub fn build_dv(dv_objects_query: &str) {
         {
             log!("In build_dv function - Spi::connect.");
             let dv_transformer_objects_result = client.select(dv_objects_query, None, None);
-            
 
             match dv_transformer_objects_result {
                 Ok(dv_transformer_objects) => {
@@ -49,13 +48,38 @@ pub fn build_dv(dv_objects_query: &str) {
 
                     }
                 }
-                
+
                 Err(e) => {
                     log!("Error getting DV Transformer Objects Result: {:?}", e);
                 }
             }
         }
     );
+
+    let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
+    // Build Descriptors
+    for dv_transformer_object in dv_transformer_objects_v {
+
+        let entity_id = Uuid::new_v4();
+
+        let entity = dv_transformer_schema::Entity {
+            id: entity_id,
+            system_id: dv_transformer_object.system_id,
+            table_oid: dv_transformer_object.table_oid,
+            column_ordinal_position: dv_transformer_object.column_ordinal_position,
+            column_type_name: dv_transformer_object.column_type_name,
+        };
+
+        if dv_transformer_object.column_category == ColumnCategory::Descriptor {
+            let descriptor = get_descriptor(dv_transformer_object.column_name, entity, false);
+            descriptors.push(descriptor);
+        } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
+            let descriptor = get_descriptor(dv_transformer_object.column_name, entity, true);
+            descriptors.push(descriptor);
+        }
+    }
+
+    // Build Business Key Part Links
 }
 
 fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
@@ -76,7 +100,7 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is
     descriptor
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ColumnCategory {
     BusinessKey,
     Descriptor,
