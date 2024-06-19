@@ -1,19 +1,5 @@
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct EntityID {
-    #[serde(rename = "ID")]
-    id: Uuid,
-    #[serde(rename = "System ID")]
-    system_id: u64,
-	#[serde(rename = "Table OID")]
-    table_oid: u32,
-    #[serde(rename = "Column Ordinal Position")]
-    column_ordinal_position: i16,
-    #[serde(rename = "Column Type")]
-    column_type: String,    
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DVTransformerSchema {
@@ -46,29 +32,43 @@ struct BusinessKeyPartLink {
     #[serde(rename = "Alias")]
     alias: String,
     #[serde(rename = "Source Column IDs")]
-    source_column_ids: Vec<EntityID>,
+    source_column_ids: Vec<Entity>,
     #[serde(rename = "Target Column ID")]
-    target_column_id: Option<EntityID>,
+    target_column_id: Option<Entity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Descriptor {
+pub struct Descriptor {
     #[serde(rename = "ID")]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "Descriptor Link")]
-    descriptor_link: DescriptorLink,
+    pub descriptor_link: DescriptorLink,
     #[serde(rename = "Is Sensitive")]
-    is_sensitive: bool,
+    pub is_sensitive: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DescriptorLink {
+pub struct DescriptorLink {
     #[serde(rename = "ID")]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "Alias")]
-    alias: String,
+    pub alias: String,
     #[serde(rename = "Source Column ID")]
-    source_column_id: Option<EntityID>,
+    pub source_column_id: Option<Entity>,
     #[serde(rename = "Target Column ID")]
-    target_column_id: Option<EntityID>,
+    pub target_column_id: Option<Entity>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Entity {
+    #[serde(rename = "ID")]
+    pub id: Uuid,
+    #[serde(rename = "System ID")]
+    pub system_id: i64,
+    #[serde(rename = "Table OID")]
+    pub table_oid: u32,
+    #[serde(rename = "Column Ordinal Position")]
+    pub column_ordinal_position: i16,
+    #[serde(rename = "Column Type")]
+    pub column_type_name: String,
 }
