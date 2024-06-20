@@ -1,12 +1,17 @@
 use pgrx::prelude::*;
 use uuid::Uuid;
 use serde_json;
+
+use std::collections::HashMap;
+
 use crate::model::dv_transformer_schema::{self, BusinessKey};
 
 pub fn build_dv(dv_objects_query: &str) {
 
     log!("In build_dv function.");
-    let mut dv_transformer_objects_v: Vec<TransformerObject> = Vec::new();
+
+    let mut dv_transformer_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
+    // let mut dv_transformer_objects_v: Vec<TransformerObject> = Vec::new();
 
     Spi::connect(|client| 
         {
@@ -25,7 +30,7 @@ pub fn build_dv(dv_objects_query: &str) {
                         let column_name = dv_transformer_object.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
                         let column_type_name = dv_transformer_object.get_datum_by_ordinal(5).unwrap().value::<String>().unwrap().unwrap();
                         let system_id = dv_transformer_object.get_datum_by_ordinal(6).unwrap().value::<i64>().unwrap().unwrap();
-                        let table_oid = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<u32>().unwrap().unwrap();
+                        let table_oid: u32 = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<u32>().unwrap().unwrap();
                         let column_ordinal_position = dv_transformer_object.get_datum_by_ordinal(8).unwrap().value::<i16>().unwrap().unwrap();
                         
                         log!("dv_transformer_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
@@ -45,7 +50,13 @@ pub fn build_dv(dv_objects_query: &str) {
                                 column_category, 
                             };
 
-                        dv_transformer_objects_v.push(transformer_object);
+                        // dv_transformer_objects_v.push(transformer_object);
+
+                        // Bucket by TransformerObject by table.
+                        dv_transformer_objects_hm
+                            .entry(table_oid)
+                            .or_insert_with(Vec::new)
+                            .push(transformer_object);
 
                     }
                 }
@@ -57,58 +68,65 @@ pub fn build_dv(dv_objects_query: &str) {
         }
     );
 
-    let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
-    let mut business_key_part_links: Vec<dv_transformer_schema::BusinessKeyPartLink> = Vec::new();
+    for dv_transformer_objects_v in dv_transformer_objects_hm {
 
-    // Build Descriptors
-    for dv_transformer_object in &dv_transformer_objects_v {
+        let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
+        let mut business_key_part_links: Vec<dv_transformer_schema::BusinessKeyPartLink> = Vec::new();
 
-        let entity_id = Uuid::new_v4();
+        // Build Descriptors
+        for dv_transformer_object in &dv_transformer_objects_v.1 {
 
-        let entity = dv_transformer_schema::Entity {
-            id: entity_id,
-            system_id: dv_transformer_object.system_id,
-            table_oid: dv_transformer_object.table_oid,
-            column_ordinal_position: dv_transformer_object.column_ordinal_position,
-            column_type_name: dv_transformer_object.column_type_name.clone(),
+            let entity_id = Uuid::new_v4();
+
+            let entity = dv_transformer_schema::Entity {
+                id: entity_id,
+                system_id: dv_transformer_object.system_id,
+                table_oid: dv_transformer_object.table_oid,
+                column_ordinal_position: dv_transformer_object.column_ordinal_position,
+                column_type_name: dv_transformer_object.column_type_name.clone(),
+            };
+
+            if dv_transformer_object.column_category == ColumnCategory::Descriptor {
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, false);
+                descriptors.push(descriptor);
+            } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, true);
+                descriptors.push(descriptor);
+            }
+        }
+
+        // Build Business Key Part Links
+        for dv_transformer_object in &dv_transformer_objects_v.1 {
+
+            let entity_id = Uuid::new_v4();
+
+            let entity = dv_transformer_schema::Entity {
+                id: entity_id,
+                system_id: dv_transformer_object.system_id,
+                table_oid: dv_transformer_object.table_oid,
+                column_ordinal_position: dv_transformer_object.column_ordinal_position,
+                column_type_name: dv_transformer_object.column_type_name.clone(),
+            };
+
+            
+            if dv_transformer_object.column_category == ColumnCategory::BusinessKey {
+                let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), entity);
+                business_key_part_links.push(business_key_part_link);
+            }
+        }
+
+        let business_key_id = Uuid::new_v4();
+        let business_key = dv_transformer_schema::BusinessKey {
+            id: business_key_id,
+            name: dv_transformer_objects_v.1[0].table_name.clone(),
+            business_key_part_links,
+            descriptors 
         };
 
-        if dv_transformer_object.column_category == ColumnCategory::Descriptor {
-            let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, false);
-            descriptors.push(descriptor);
-        } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
-            let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, true);
-            descriptors.push(descriptor);
-        }
+        log!("Business Key for DV Generation: {:?}", business_key);
     }
 
-    // Build Business Key Part Links
-    for dv_transformer_object in &dv_transformer_objects_v {
-
-        let entity_id = Uuid::new_v4();
-
-        let entity = dv_transformer_schema::Entity {
-            id: entity_id,
-            system_id: dv_transformer_object.system_id,
-            table_oid: dv_transformer_object.table_oid,
-            column_ordinal_position: dv_transformer_object.column_ordinal_position,
-            column_type_name: dv_transformer_object.column_type_name.clone(),
-        };
-
-        
-        if dv_transformer_object.column_category == ColumnCategory::BusinessKey {
-            let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), entity);
-            business_key_part_links.push(business_key_part_link);
-        }
-    }
-
-    let business_key_id = Uuid::new_v4();
-    let mut business_key = dv_transformer_schema::BusinessKey {
-        id: business_key_id,
-        name: "Foo".to_string(),
-        business_key_part_links,
-        descriptors 
-    };
+ 
 
 }
 
