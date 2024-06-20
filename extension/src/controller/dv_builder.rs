@@ -47,9 +47,7 @@ pub fn build_dv(dv_objects_query: &str) {
                                 column_category, 
                             };
 
-                        // dv_transformer_objects_v.push(transformer_object);
-
-                        // Bucket by TransformerObject by table.
+                        // Bucket TransformerObject by table
                         dv_transformer_objects_hm
                             .entry(table_oid)
                             .or_insert_with(Vec::new)
@@ -126,7 +124,8 @@ pub fn build_dv(dv_objects_query: &str) {
         business_key_v.push(business_key);
     }
 
- 
+    // Build DV
+    // Push DV Function
 
 }
 
