@@ -1,17 +1,14 @@
 use pgrx::prelude::*;
 use uuid::Uuid;
-use serde_json;
-
 use std::collections::HashMap;
 
-use crate::model::dv_transformer_schema::{self, BusinessKey};
+use crate::model::dv_transformer_schema;
 
 pub fn build_dv(dv_objects_query: &str) {
 
     log!("In build_dv function.");
 
     let mut dv_transformer_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
-    // let mut dv_transformer_objects_v: Vec<TransformerObject> = Vec::new();
 
     Spi::connect(|client| 
         {
@@ -68,6 +65,8 @@ pub fn build_dv(dv_objects_query: &str) {
         }
     );
 
+    // Build a Vector of BusinessKey's
+    let mut business_key_v: Vec<dv_transformer_schema::BusinessKey> = Vec::new();
     for dv_transformer_objects_v in dv_transformer_objects_hm {
 
         let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
@@ -124,6 +123,7 @@ pub fn build_dv(dv_objects_query: &str) {
         };
 
         log!("Business Key for DV Generation: {:?}", business_key);
+        business_key_v.push(business_key);
     }
 
  

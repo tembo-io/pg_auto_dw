@@ -2,15 +2,15 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DVTransformerSchema {
+pub struct DVTransformerSchema {
     #[serde(rename = "ID")]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "Create Date")]
-    create_date: String,
+    pub create_date: String,
     #[serde(rename = "Modified Date")]
-    modified_date: String,
+    pub modified_date: String,
     #[serde(rename = "Business Keys")]
-    business_keys: Vec<BusinessKey>,
+    pub business_keys: Vec<BusinessKey>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
