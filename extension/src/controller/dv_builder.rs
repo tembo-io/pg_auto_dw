@@ -127,6 +127,35 @@ pub fn build_dv(dv_objects_query: &str) {
     // Build DV
     // Push DV Function
 
+    // CREATE TABLE public.hub_seller (
+    //     hub_seller_hk VARCHAR NOT NULL,
+    //     load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    //     record_source VARCHAR NOT NULL,
+    //     seller_id_bk VARCHAR
+    // );
+
+    for business_key in business_key_v {
+
+        let mut hub_bks = String::new();
+
+        for part_link in business_key.business_key_part_links {
+            let r = format!(r#",
+                {}_bk VARCHAR"#, part_link.alias);
+            hub_bks.push_str(&r);
+        }
+
+        let hub = 
+            format!(r#"
+                CREATE TABLE dw_dev.hub_{} (
+                    hub_{}_hk VARCHAR NOT NULL,
+                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    record_source VARCHAR NOT NULL{}
+                );
+            "#, business_key.name, business_key.name, hub_bks);
+
+        log!("Hub SQL: {}", hub);
+    }
+
 }
 
 fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
