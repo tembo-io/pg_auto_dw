@@ -14,27 +14,27 @@ struct DVTransformerSchema {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct BusinessKey {
+pub struct BusinessKey {
     #[serde(rename = "ID")]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "Name")]
-    name: String,
+    pub name: String,
     #[serde(rename = "Business Key Part Links")]
-    business_key_part_links: Vec<BusinessKeyPartLink>,
+    pub business_key_part_links: Vec<BusinessKeyPartLink>,
     #[serde(rename = "Descriptors")]
-    descriptors: Vec<Descriptor>,
+    pub descriptors: Vec<Descriptor>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct BusinessKeyPartLink {
+pub struct BusinessKeyPartLink {
     #[serde(rename = "ID")]
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "Alias")]
-    alias: String,
+    pub alias: String,
     #[serde(rename = "Source Column IDs")]
-    source_column_ids: Vec<Entity>,
+    pub source_column_entities: Vec<Entity>,
     #[serde(rename = "Target Column ID")]
-    target_column_id: Option<Entity>,
+    pub target_column_id: Option<Entity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -54,9 +54,9 @@ pub struct DescriptorLink {
     #[serde(rename = "Alias")]
     pub alias: String,
     #[serde(rename = "Source Column ID")]
-    pub source_column_id: Option<Entity>,
+    pub source_column_entity: Option<Entity>,
     #[serde(rename = "Target Column ID")]
-    pub target_column_id: Option<Entity>,
+    pub target_column_entiy: Option<Entity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

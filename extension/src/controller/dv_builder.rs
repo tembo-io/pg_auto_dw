@@ -1,9 +1,10 @@
 use pgrx::prelude::*;
 use uuid::Uuid;
 use serde_json;
-use crate::model::dv_transformer_schema;
+use crate::model::dv_transformer_schema::{self, BusinessKey};
 
 pub fn build_dv(dv_objects_query: &str) {
+
     log!("In build_dv function.");
     let mut dv_transformer_objects_v: Vec<TransformerObject> = Vec::new();
 
@@ -57,8 +58,10 @@ pub fn build_dv(dv_objects_query: &str) {
     );
 
     let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
+    let mut business_key_part_links: Vec<dv_transformer_schema::BusinessKeyPartLink> = Vec::new();
+
     // Build Descriptors
-    for dv_transformer_object in dv_transformer_objects_v {
+    for dv_transformer_object in &dv_transformer_objects_v {
 
         let entity_id = Uuid::new_v4();
 
@@ -67,19 +70,46 @@ pub fn build_dv(dv_objects_query: &str) {
             system_id: dv_transformer_object.system_id,
             table_oid: dv_transformer_object.table_oid,
             column_ordinal_position: dv_transformer_object.column_ordinal_position,
-            column_type_name: dv_transformer_object.column_type_name,
+            column_type_name: dv_transformer_object.column_type_name.clone(),
         };
 
         if dv_transformer_object.column_category == ColumnCategory::Descriptor {
-            let descriptor = get_descriptor(dv_transformer_object.column_name, entity, false);
+            let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, false);
             descriptors.push(descriptor);
         } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
-            let descriptor = get_descriptor(dv_transformer_object.column_name, entity, true);
+            let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, true);
             descriptors.push(descriptor);
         }
     }
 
     // Build Business Key Part Links
+    for dv_transformer_object in &dv_transformer_objects_v {
+
+        let entity_id = Uuid::new_v4();
+
+        let entity = dv_transformer_schema::Entity {
+            id: entity_id,
+            system_id: dv_transformer_object.system_id,
+            table_oid: dv_transformer_object.table_oid,
+            column_ordinal_position: dv_transformer_object.column_ordinal_position,
+            column_type_name: dv_transformer_object.column_type_name.clone(),
+        };
+
+        
+        if dv_transformer_object.column_category == ColumnCategory::BusinessKey {
+            let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), entity);
+            business_key_part_links.push(business_key_part_link);
+        }
+    }
+
+    let business_key_id = Uuid::new_v4();
+    let mut business_key = dv_transformer_schema::BusinessKey {
+        id: business_key_id,
+        name: "Foo".to_string(),
+        business_key_part_links,
+        descriptors 
+    };
+
 }
 
 fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
@@ -87,8 +117,8 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is
     let descriptor_link = dv_transformer_schema::DescriptorLink {
         id: descriptor_link_id,
         alias: column_name, // TODO: Give the user an option to change name in the future - modality TBD.
-        source_column_id: Some(entity),
-        target_column_id: None,
+        source_column_entity: Some(entity),
+        target_column_entiy: None,
     };
     let descriptor_id = Uuid::new_v4();
     let descriptor = dv_transformer_schema::Descriptor {
@@ -98,6 +128,21 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is
     };
     log!("dv Enity Object {:?}", &descriptor);
     descriptor
+}
+
+fn get_business_key_part_link(alias: String, entity: dv_transformer_schema::Entity) -> dv_transformer_schema::BusinessKeyPartLink {
+    let business_key_part_link_id = Uuid::new_v4();
+    let mut source_column_entities: Vec<dv_transformer_schema::Entity> = Vec::new(); 
+    source_column_entities.push(entity);
+
+    let business_key_link = dv_transformer_schema::BusinessKeyPartLink {
+        id: business_key_part_link_id,
+        alias,
+        source_column_entities: source_column_entities,
+        target_column_id: None,
+    };
+
+    business_key_link
 }
 
 #[derive(Debug, PartialEq)]
@@ -129,33 +174,3 @@ struct TransformerObject {
     column_ordinal_position: i16,
     column_category: ColumnCategory,
 }
-
-
-// let entity_id = Uuid::new_v4();
-
-// let entity = dv_transformer_schema::Entity {
-//     id: entity_id,
-//     system_id,
-//     table_oid,
-//     column_ordinal_position,
-//     column_type_name,
-// };
-
-
-
-// match column_category {
-//     ColumnCategory::BusinessKey => {
-//         // Code for BusinessKey
-//         println!("This is the Business Key variant.");
-//     }
-//     ColumnCategory::Descriptor => {
-//         // Code for Descriptor
-//         println!("This is the Descriptor variant.");
-//         let descriptor = get_descriptor(column_name, entity, false);
-//     }
-//     ColumnCategory::DescriptorSensitive => {
-//         // Code for DescriptorSensitive
-//         println!("This is the Descriptor Sensitive variant."); 
-//         let descriptor = get_descriptor(column_name, entity, true);
-//     }
-// }
