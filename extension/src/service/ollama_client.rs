@@ -1,6 +1,7 @@
 use pgrx::prelude::*;
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Serialize)]
 pub struct GenerateRequest {
@@ -18,7 +19,8 @@ pub struct GenerateResponse {
 }
 
 pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let client = Client::new();
+
+    let client = ClientBuilder::new().timeout(Duration::from_secs(90)).build()?; // 30 sec Default to short for some LLMS.
     
     let prompt_template = r#"
       You are given a JSON object containing the schema name, table name, and details about each column in a table. This is source table information and downstream we are creating data vault tables. In this case, we are focusing on categorization for building hubs and satellites. Your task is to categorize each column into one of three categories: "Business Key," "Descriptor," or "Descriptor - Sensitive." The response should include the column number, the category type, and a confidence score for each categorization.

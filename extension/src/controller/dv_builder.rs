@@ -126,14 +126,7 @@ pub fn build_dv(dv_objects_query: &str) {
 
     // Build DV
     // Push DV Function
-
-    // CREATE TABLE public.hub_seller (
-    //     hub_seller_hk VARCHAR NOT NULL,
-    //     load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    //     record_source VARCHAR NOT NULL,
-    //     seller_id_bk VARCHAR
-    // );
-
+    let mut dv_ddl_sql = String::new();
     for business_key in business_key_v {
 
         let mut hub_bks = String::new();
@@ -154,7 +147,75 @@ pub fn build_dv(dv_objects_query: &str) {
             "#, business_key.name, business_key.name, hub_bks);
 
         log!("Hub SQL: {}", hub);
+        dv_ddl_sql.push_str(&format!(
+            r#"
+            {}"#, hub));
+
+        // TODO: Have an unlimited number of satellites "orbits."
+        let mut sat_descriptors = String::new();
+        let mut sat_descriptors_sensitive = String::new();
+
+        for descriptor in &business_key.descriptors {
+            let desc_column_name = &descriptor.descriptor_link.alias;
+            let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
+            let r = format!(r#",
+                                    {} {}"#, desc_column_name, desc_column_type);
+
+            if !descriptor.is_sensitive {
+                sat_descriptors.push_str(&r);
+            } else {
+                sat_descriptors_sensitive.push_str(&r);
+            }
+        }
+
+        let sat = 
+            format!(r#"
+                CREATE TABLE dw_dev.sat_{} (
+                    hub_{}_hk VARCHAR NOT NULL,
+                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    record_source VARCHAR NOT NULL,
+                    sat_{}_hd VARCHAR NOT NULL{}
+                );
+            "#, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
+
+        let sat_sensitive = 
+            format!(r#"
+                CREATE TABLE dw_dev.sat_{}_sensitive_data (
+                    hub_{}_hk VARCHAR NOT NULL,
+                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    record_source VARCHAR NOT NULL,
+                    sat_{}_hd VARCHAR NOT NULL{}
+                );
+            "#, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
+        
+        if sat_descriptors.len() > 0 {
+            log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
+            dv_ddl_sql.push_str(&format!(
+                r#"
+                {}"#, sat));
+        } else {
+            log!("No Sat Fields");
+        }
+        if sat_descriptors_sensitive.len() > 0 {
+            log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
+            dv_ddl_sql.push_str(&format!(
+                r#"
+                {}"#, sat_sensitive));
+        } else {
+            log!("No Sensitigve Sat Fields");
+        }
     }
+
+    log!("DDL Full: {}", &dv_ddl_sql);
+
+    // Build Tables using DDL
+    Spi::connect( |mut client| {
+            log!("Building DV Tables");
+            // client.select(dv_objects_query, None, None);
+            _ = client.update(&dv_ddl_sql, None, None);
+            log!("DV Tables Built");
+        }
+    );
 
 }
 
