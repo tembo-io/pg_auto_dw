@@ -7,6 +7,7 @@ use std::time::Duration;
 pub struct GenerateRequest {
     pub model: String,
     pub prompt: String,
+    pub format: String,
     pub stream: bool,
 }
 
@@ -133,6 +134,7 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
     let request = GenerateRequest {
         model: "mistral".to_string(),
         prompt,
+        format: "json".to_string(),
         stream: false,
     };
 
