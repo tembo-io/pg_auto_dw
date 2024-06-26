@@ -1,5 +1,4 @@
-use pgrx::prelude::*;
-use reqwest::{Client, ClientBuilder};
+use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

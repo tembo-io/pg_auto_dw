@@ -1,8 +1,6 @@
 use pgrx::Json as JsonValue;
 use serde::{Deserialize, Serialize};
 
-use serde_json::Value as JSON;
-
 #[derive(Debug)]
 pub struct SourceTablePrompt {
     pub key: u32,
