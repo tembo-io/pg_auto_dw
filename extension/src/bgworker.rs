@@ -13,23 +13,76 @@ use crate::model::source_objects;
 use serde::de::DeserializeOwned;
 use serde_json::from_value;
 
+use pgrx::guc::*;
+use std::ffi::CStr;
 
 
 // TODO: Create initial pattern for injection of public schema.
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
-    BackgroundWorkerBuilder::new("Background Worker Source Object Update")
-        .set_function("background_worker_main")
+
+    init_guc();
+
+        // Register the background worker
+    BackgroundWorkerBuilder::new("My GUC BG WORKER")
+        .set_function("background_worker_guc")
         .set_library("pg_auto_dw")
         .enable_spi_access()
         .load();
 
-    BackgroundWorkerBuilder::new("Background Worker Ollama Client")
-    .set_function("background_worker_ollama_client_main")
-    .set_library("pg_auto_dw")
-    .enable_spi_access()
-    .load();
+    // BackgroundWorkerBuilder::new("Background Worker Source Object Update")
+    //     .set_function("background_worker_main")
+    //     .set_library("pg_auto_dw")
+    //     .enable_spi_access()
+    //     .load();
+
+    // BackgroundWorkerBuilder::new("Background Worker Ollama Client")
+    //     .set_function("background_worker_ollama_client_main")
+    //     .set_library("pg_auto_dw")
+    //     .enable_spi_access()
+    //     .load();
+}
+
+// Define a static GUC for the with a extension database a default name of "pg_undefined_db_name" as "pg_.*" is reserved.
+static EXTENSION_DB_NAME: GucSetting<Option<&'static CStr>> = GucSetting::<Option<&'static CStr>>::new(Some(unsafe {
+    CStr::from_bytes_with_nul_unchecked(b"pg_undefined_db_name\0")
+}));
+
+pub fn init_guc() {
+    // Register the GUC with a default value
+    GucRegistry::define_string_guc(
+        "pg_auto_dw.database_name",
+        "The database name for the extension.",
+        "This is the database name used by the extension.",
+        &EXTENSION_DB_NAME,
+        GucContext::Userset,
+        GucFlags::default(),
+    );
+}
+
+
+#[pg_guard]
+#[no_mangle]
+pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
+    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
+
+    while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
+        // Retrieve the GUC value
+        if let Some(db_name_cstr) = EXTENSION_DB_NAME.get() {
+            if let Ok(db_name_str) = db_name_cstr.to_str() {
+                if db_name_str == "pg_undefined_db_name" {
+                    log!("Database name not set");
+                } else {
+                    log!("The database name in background worker is: {}", db_name_str);
+                }
+            } else {
+                log!("Failed to convert database name to a Rust string in background worker.");
+            }
+        } else {
+            log!("The database name is not set in background worker.");
+        }
+    }
 }
 
 #[pg_guard]
@@ -220,3 +273,6 @@ where
         from_value::<T>(json).ok()
     })
 }
+
+
+
