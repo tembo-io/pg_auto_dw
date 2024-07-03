@@ -3,18 +3,13 @@ use pgrx::prelude::*;
 
 use std::time::Duration;
 use tokio::runtime::Runtime;
-
-use crate::queries;
-
-use crate::service::ollama_client;
-
-use crate::model::source_objects;
-
 use serde::de::DeserializeOwned;
 use serde_json::from_value;
 
-use pgrx::guc::*;
-use std::ffi::CStr;
+use crate::queries;
+use crate::utility::ollama_client;
+use crate::utility::guc;
+use crate::model::source_objects;
 
 
 // TODO: Create initial pattern for injection of public schema.
@@ -22,14 +17,24 @@ use std::ffi::CStr;
 #[pg_guard]
 pub extern "C" fn _PG_init() {
 
-    init_guc();
+    guc::init_guc();
+
+    // match guc::get_extension_db_name() {
+    //     Some(db_name) => {
+    //         if db_name == ""
+    //         log!("Extension DB Name: {}", db_name)
+    //     }
+    //     None => {
+    //         log!("Failed to get Extension DB Name");
+    //     }
+    // }
 
         // Register the background worker
-    BackgroundWorkerBuilder::new("My GUC BG WORKER")
-        .set_function("background_worker_guc")
-        .set_library("pg_auto_dw")
-        .enable_spi_access()
-        .load();
+    // BackgroundWorkerBuilder::new("My GUC BG WORKER")
+    //     .set_function("background_worker_guc")
+    //     .set_library("pg_auto_dw")
+    //     .enable_spi_access()
+    //     .load();
 
     // BackgroundWorkerBuilder::new("Background Worker Source Object Update")
     //     .set_function("background_worker_main")
@@ -44,46 +49,29 @@ pub extern "C" fn _PG_init() {
     //     .load();
 }
 
-// Define a static GUC for the with a extension database a default name of "pg_undefined_db_name" as "pg_.*" is reserved.
-static EXTENSION_DB_NAME: GucSetting<Option<&'static CStr>> = GucSetting::<Option<&'static CStr>>::new(Some(unsafe {
-    CStr::from_bytes_with_nul_unchecked(b"pg_undefined_db_name\0")
-}));
 
-pub fn init_guc() {
-    // Register the GUC with a default value
-    GucRegistry::define_string_guc(
-        "pg_auto_dw.database_name",
-        "The database name for the extension.",
-        "This is the database name used by the extension.",
-        &EXTENSION_DB_NAME,
-        GucContext::Userset,
-        GucFlags::default(),
-    );
-}
+// #[pg_guard]
+// #[no_mangle]
+// pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
+//     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
 
-
-#[pg_guard]
-#[no_mangle]
-pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
-    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
-        // Retrieve the GUC value
-        if let Some(db_name_cstr) = EXTENSION_DB_NAME.get() {
-            if let Ok(db_name_str) = db_name_cstr.to_str() {
-                if db_name_str == "pg_undefined_db_name" {
-                    log!("Database name not set");
-                } else {
-                    log!("The database name in background worker is: {}", db_name_str);
-                }
-            } else {
-                log!("Failed to convert database name to a Rust string in background worker.");
-            }
-        } else {
-            log!("The database name is not set in background worker.");
-        }
-    }
-}
+//     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
+//         // Retrieve the GUC value
+//         if let Some(db_name_cstr) = guc::EXTENSION_DB_NAME.get() {
+//             if let Ok(db_name_str) = db_name_cstr.to_str() {
+//                 if db_name_str == "pg_undefined_db_name" {
+//                     log!("Database name not set");
+//                 } else {
+//                     log!("The database name in background worker is: {}", db_name_str);
+//                 }
+//             } else {
+//                 log!("Failed to convert database name to a Rust string in background worker.");
+//             }
+//         } else {
+//             log!("The database name is not set in background worker.");
+//         }
+//     }
+// }
 
 #[pg_guard]
 #[no_mangle]
@@ -165,6 +153,7 @@ pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
                                                                                         table_details: table_details
                                                                                     };
 
+                        
                         
                         
                         v_source_table_prompts.push(source_table_prompt)

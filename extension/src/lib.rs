@@ -1,19 +1,13 @@
+mod controller; // Coordinates application logic and model-service interactions.
+mod model;      // Defines data structures and data-related methods.
+mod utility;    // Initialization, Configuration Management, and External Services
+
 pub use pgrx::prelude::*;
 use uuid::Uuid;
 
 pgrx::pg_module_magic!();
 
-mod setup;
-mod queries;
-
-#[cfg(feature = "experimental")]
-mod bgworker;
-
-// mod ollama_client;
-
-mod controller; // Coordinates application logic and model-service interactions.
-mod model;      // Defines data structures and data-related methods.
-mod service;    // Manages external communications with services like the ollama server.
+use model::queries;
 
 #[pg_extern]
 fn hello_pg_auto_dw() -> &'static str {

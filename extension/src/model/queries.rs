@@ -198,9 +198,6 @@ pub const SOURCE_COLUMN: &str = r#"
         ORDER BY s.schema_name, s.table_name, s.column_ordinal_position;
         "#;
 
-
-
-#[cfg(feature = "experimental")]
 pub const SOURCE_OBJECTS_JSON: &str = r#"
             WITH
             table_tranformation_time_cal AS (
