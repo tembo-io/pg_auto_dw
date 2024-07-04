@@ -7,110 +7,15 @@ use serde::de::DeserializeOwned;
 use serde_json::from_value;
 
 use crate::queries;
-use crate::utility::guc::get_guc;
-use crate::utility::ollama_client;
-use crate::utility::guc;
 use crate::model::source_objects;
-
-use std::ffi::{CStr, CString};
-
-
-// TODO: Create initial pattern for injection of public schema.
-
-#[pg_guard]
-pub extern "C" fn _PG_init() {
-
-    log!("Setting Database Name");
-
-    guc::init_guc();
-
-    let database_name_o = get_guc(guc::PgAutoDWGuc::DatabaseName);
-
-    match database_name_o {
-        Some(database_name) => {
-            log!("DB Name is {}, starting pg_auto_dw background workers.", database_name);
-
-            BackgroundWorkerBuilder::new("Background Worker Source Object Update")
-            .set_function("background_worker_main")
-            .set_library("pg_auto_dw")
-            .enable_spi_access()
-            .load();
-
-           BackgroundWorkerBuilder::new("Background Worker Ollama Client")
-            .set_function("background_worker_ollama_client_main")
-            .set_library("pg_auto_dw")
-            .enable_spi_access()
-            .load();
-        }
-        None => {
-            log!("Database Name for this extensaion hasn't been set. Set and restart server.");
-        }
-    }
-
-
-
- 
-}
+use crate::utility::ollama_client;
 
 #[pg_guard]
 #[no_mangle]
-pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
+pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
-    let database_name_o = get_guc(guc::PgAutoDWGuc::DatabaseName);
-    let mut should_continue = true;
-
-    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-    BackgroundWorker::connect_worker_to_spi(database_name_o.as_deref(), None);
-
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
-        let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
-            Spi::connect(|mut client| {
-
-                log!("Client BG Worker - Source Objects to update.");
-                log!("Checking if TABLE AUTO_DW.SOURCE_OJBECTS exists.");
-
-                let table_check_results: Result<spi::SpiTupleTable, spi::SpiError> = 
-                    client.select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'auto_dw' AND table_name = 'source_objects'", None, None);
-                match table_check_results {
-                    Ok(table_check) => {
-                        if table_check.len() > 0 {
-                            log!("TABLE AUTO_DW.SOURCE_OJBECTS exists. Proceeding with update.");
-                            client.update(
-                                queries::source_object_dw(
-                                    "a^", 
-                                    "a^", 
-                                    "a^", 
-                                    "a^", 
-                                    "a^", 
-                                    "a^"
-                                ).as_str(),
-                                None,
-                                None,
-                            )?;
-                            log!("Client BG Worker - Source Objects updated.");
-                        } else {
-                            panic!("TABLE AUTO_DW.SOURCE_OJBECTS not found. PG_AUTO_DW Extension may need to be installed.");
-                        }
-                    },
-                    Err(e) => {
-                        log!("Error checking TABLE AUTO_DW.SOURCE_OJBECTS: {:?}", e);
-                    }
-                }
-                Ok(())
-            })
-        });
-        result.unwrap_or_else(|e| panic!("got an error: {}", e));
-    }
-
-log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
-}
-
-#[pg_guard]
-#[no_mangle]
-pub extern "C" fn background_worker_ollama_client_main(_arg: pg_sys::Datum) {
     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
     BackgroundWorker::connect_worker_to_spi(Some("pg_auto_dw"), None);
-
 
     // Initialize Tokio runtime
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
@@ -246,18 +151,3 @@ where
         from_value::<T>(json).ok()
     })
 }
-
-
-fn fetch_guc_value(guc_name: &str) -> Option<CString> {
-    let guc_name_cstr = CString::new(guc_name).unwrap();
-    let guc_val = unsafe { pg_sys::GetConfigOptionByName(guc_name_cstr.as_ptr(), std::ptr::null_mut(), true) };
-    if !guc_val.is_null() {
-        let cstr_val = unsafe { CStr::from_ptr(guc_val) };
-        if let Ok(cstr) = CString::new(cstr_val.to_bytes()) {
-            return Some(cstr);
-        }
-    }
-    None
-}
-
-
