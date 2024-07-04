@@ -13,8 +13,7 @@ pub extern "C" fn _PG_init() {
     let database_name_o = guc::get_guc(guc::PgAutoDWGuc::DatabaseName);
 
     match database_name_o {
-        Some(database_name) => {
-            log!("DB Name is {}, starting pg_auto_dw background workers.", database_name);
+        Some(_database_name) => {
 
             BackgroundWorkerBuilder::new("Background Worker Source Object Update")
             .set_function("background_worker_source_objects")
@@ -29,7 +28,7 @@ pub extern "C" fn _PG_init() {
             .load();
         }
         None => {
-            log!("Database Name for this extensaion hasn't been set. Set and restart server.");
+            log!("Database Name for this extensaion has not been set.");
         }
     }
 }

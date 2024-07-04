@@ -19,9 +19,6 @@ pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
             Spi::connect(|mut client| {
 
-                log!("Client BG Worker - Source Objects to update.");
-                log!("Checking if TABLE AUTO_DW.SOURCE_OJBECTS exists.");
-
                 let table_check_results: Result<spi::SpiTupleTable, spi::SpiError> = 
                     client.select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'auto_dw' AND table_name = 'source_objects'", None, None);
                 match table_check_results {
@@ -40,7 +37,6 @@ pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
                                 None,
                                 None,
                             )?;
-                            log!("Client BG Worker - Source Objects updated.");
                         } else {
                             panic!("TABLE AUTO_DW.SOURCE_OJBECTS not found. PG_AUTO_DW Extension may need to be installed.");
                         }
@@ -54,6 +50,4 @@ pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
         });
         result.unwrap_or_else(|e| panic!("got an error: {}", e));
     }
-
-log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
 }
