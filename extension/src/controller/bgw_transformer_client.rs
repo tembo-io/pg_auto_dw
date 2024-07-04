@@ -92,8 +92,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     match index_o {
                         Some(index) => {
                             let column_detail = &generation_table_detail.response_column_details[index];
-
-                            let column_no = &column_detail.column_no;
+                            
                             let category = &column_detail.category.replace("'", "''");
                             let confidence_score = &column_detail.confidence;
                             let reason = &column_detail.reason.replace("'", "''");

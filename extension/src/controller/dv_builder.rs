@@ -272,6 +272,7 @@ impl ColumnCategory {
 
 #[derive(Debug)]
 struct TransformerObject {
+    #[allow(dead_code)]
     schema_name: String,
     table_name: String,
     column_name: String,
