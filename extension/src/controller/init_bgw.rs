@@ -22,120 +22,85 @@ pub extern "C" fn _PG_init() {
 
     log!("Setting Database Name");
 
-    // // Fetch the initial value of the GUC
-    // if let Some(initial_value) = fetch_guc_value("pg_auto_dw.database_name") {
-    //     log!("pg_auto_dw.database_name GUC set to: {:?}", initial_value);
-    // } else {
-    //     log!("pg_auto_dw.database_name GUC is not set initially.");
-    // }
-
     guc::init_guc();
 
-    // // Loop every 3 seconds
-    // let database_name = get_guc(guc::PgAutoDWGuc::DatabaseName);
-    // log!("Database Name in GUC: {:?}", database_name);
+    let database_name_o = get_guc(guc::PgAutoDWGuc::DatabaseName);
 
-    // match guc::get_extension_db_name() {
-    //     Some(db_name) => {
-    //         if db_name == ""
-    //         log!("Extension DB Name: {}", db_name)
-    //     }
-    //     None => {
-    //         log!("Failed to get Extension DB Name");
-    //     }
-    // }
+    match database_name_o {
+        Some(database_name) => {
+            log!("DB Name is {}, starting pg_auto_dw background workers.", database_name);
 
-    //     Register the background worker
-    BackgroundWorkerBuilder::new("My GUC BG WORKER")
-        .set_function("background_worker_guc")
-        .set_library("pg_auto_dw")
-        .enable_spi_access()
-        .load();
+            BackgroundWorkerBuilder::new("Background Worker Source Object Update")
+            .set_function("background_worker_main")
+            .set_library("pg_auto_dw")
+            .enable_spi_access()
+            .load();
 
-    // BackgroundWorkerBuilder::new("Background Worker Source Object Update")
-    //     .set_function("background_worker_main")
-    //     .set_library("pg_auto_dw")
-    //     .enable_spi_access()
-    //     .load();
-
-    // BackgroundWorkerBuilder::new("Background Worker Ollama Client")
-    //     .set_function("background_worker_ollama_client_main")
-    //     .set_library("pg_auto_dw")
-    //     .enable_spi_access()
-    //     .load();
-}
-
-
-#[pg_guard]
-#[no_mangle]
-pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
-    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
-        // Retrieve the GUC value
-
-        let database_name = get_guc(guc::PgAutoDWGuc::DatabaseName);
-        log!("Database Name in GUC: {:?}", database_name);
-        // if let Some(db_name_cstr) = guc::EXTENSION_DB_NAME.get() {
-        //     if let Ok(db_name_str) = db_name_cstr.to_str() {
-        //         if db_name_str == "pg_undefined_db_name" {
-        //             log!("Database name not set");
-        //         } else {
-        //             log!("The database name in background worker is: {}", db_name_str);
-        //         }
-        //     } else {
-        //         log!("Failed to convert database name to a Rust string in background worker.");
-        //     }
-        // } else {
-        //     log!("The database name is not set in background worker.");
-        // }
+           BackgroundWorkerBuilder::new("Background Worker Ollama Client")
+            .set_function("background_worker_ollama_client_main")
+            .set_library("pg_auto_dw")
+            .enable_spi_access()
+            .load();
+        }
+        None => {
+            log!("Database Name for this extensaion hasn't been set. Set and restart server.");
+        }
     }
+
+
+
+ 
 }
 
 #[pg_guard]
 #[no_mangle]
 pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
+    let database_name_o = get_guc(guc::PgAutoDWGuc::DatabaseName);
+    let mut should_continue = true;
+
     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-    BackgroundWorker::connect_worker_to_spi(Some("pg_auto_dw"), None);
+    BackgroundWorker::connect_worker_to_spi(database_name_o.as_deref(), None);
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
-            let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
-                Spi::connect(|mut client| {
-                    log!("Client BG Worker - Source Objects to update.");
-                    log!("Checking if TABLE AUTO_DW.SOURCE_OJBECTS exists.");
-                    let table_check_results: Result<spi::SpiTupleTable, spi::SpiError> = 
-                        client.select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'auto_dw' AND table_name = 'source_objects'", None, None);
-                    match table_check_results {
-                        Ok(table_check) => {
-                            if table_check.len() > 0 {
-                                log!("TABLE AUTO_DW.SOURCE_OJBECTS exists. Proceeding with update.");
-                                client.update(
-                                    queries::source_object_dw(
-                                        "a^", 
-                                        "a^", 
-                                        "a^", 
-                                        "a^", 
-                                        "a^", 
-                                        "a^"
-                                    ).as_str(),
-                                    None,
-                                    None,
-                                )?;
-                                log!("Client BG Worker - Source Objects updated.");
-                            } else {
-                                log!("TABLE AUTO_DW.SOURCE_OJBECTS does not exist. Skipping update.");
-                            }
-                        },
-                        Err(e) => {
-                            log!("Error checking TABLE AUTO_DW.SOURCE_OJBECTS: {:?}", e);
+        let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
+            Spi::connect(|mut client| {
+
+                log!("Client BG Worker - Source Objects to update.");
+                log!("Checking if TABLE AUTO_DW.SOURCE_OJBECTS exists.");
+
+                let table_check_results: Result<spi::SpiTupleTable, spi::SpiError> = 
+                    client.select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'auto_dw' AND table_name = 'source_objects'", None, None);
+                match table_check_results {
+                    Ok(table_check) => {
+                        if table_check.len() > 0 {
+                            log!("TABLE AUTO_DW.SOURCE_OJBECTS exists. Proceeding with update.");
+                            client.update(
+                                queries::source_object_dw(
+                                    "a^", 
+                                    "a^", 
+                                    "a^", 
+                                    "a^", 
+                                    "a^", 
+                                    "a^"
+                                ).as_str(),
+                                None,
+                                None,
+                            )?;
+                            log!("Client BG Worker - Source Objects updated.");
+                        } else {
+                            panic!("TABLE AUTO_DW.SOURCE_OJBECTS not found. PG_AUTO_DW Extension may need to be installed.");
                         }
+                    },
+                    Err(e) => {
+                        log!("Error checking TABLE AUTO_DW.SOURCE_OJBECTS: {:?}", e);
                     }
-                    Ok(())
-                })
-            });
-            result.unwrap_or_else(|e| panic!("got an error: {}", e));
-        }
+                }
+                Ok(())
+            })
+        });
+        result.unwrap_or_else(|e| panic!("got an error: {}", e));
+    }
 
 log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
 }
