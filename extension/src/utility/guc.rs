@@ -6,6 +6,7 @@ use anyhow::Result;
 
 pub static PG_AUTO_DW_DATABASE_NAME: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
+
 pub fn init_guc() {
     // Register the GUCs
     GucRegistry::define_string_guc(
@@ -13,9 +14,10 @@ pub fn init_guc() {
         "The database name for the extension.",
         "This is the database name used by the extension.",
         &PG_AUTO_DW_DATABASE_NAME,
-        GucContext::Userset,
+        GucContext::Suset,
         GucFlags::default(),
     );
+
 }
 
 // for handling of GUCs that can be error prone
@@ -51,3 +53,4 @@ fn handle_cstr(cstr: &CStr) -> Result<String> {
         Err(anyhow::anyhow!("failed to convert CStr to str"))
     }
 }
+

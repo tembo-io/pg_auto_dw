@@ -7,9 +7,12 @@ use serde::de::DeserializeOwned;
 use serde_json::from_value;
 
 use crate::queries;
+use crate::utility::guc::get_guc;
 use crate::utility::ollama_client;
 use crate::utility::guc;
 use crate::model::source_objects;
+
+use std::ffi::{CStr, CString};
 
 
 // TODO: Create initial pattern for injection of public schema.
@@ -17,7 +20,20 @@ use crate::model::source_objects;
 #[pg_guard]
 pub extern "C" fn _PG_init() {
 
+    log!("Setting Database Name");
+
+    // // Fetch the initial value of the GUC
+    // if let Some(initial_value) = fetch_guc_value("pg_auto_dw.database_name") {
+    //     log!("pg_auto_dw.database_name GUC set to: {:?}", initial_value);
+    // } else {
+    //     log!("pg_auto_dw.database_name GUC is not set initially.");
+    // }
+
     guc::init_guc();
+
+    // // Loop every 3 seconds
+    // let database_name = get_guc(guc::PgAutoDWGuc::DatabaseName);
+    // log!("Database Name in GUC: {:?}", database_name);
 
     // match guc::get_extension_db_name() {
     //     Some(db_name) => {
@@ -29,12 +45,12 @@ pub extern "C" fn _PG_init() {
     //     }
     // }
 
-        // Register the background worker
-    // BackgroundWorkerBuilder::new("My GUC BG WORKER")
-    //     .set_function("background_worker_guc")
-    //     .set_library("pg_auto_dw")
-    //     .enable_spi_access()
-    //     .load();
+    //     Register the background worker
+    BackgroundWorkerBuilder::new("My GUC BG WORKER")
+        .set_function("background_worker_guc")
+        .set_library("pg_auto_dw")
+        .enable_spi_access()
+        .load();
 
     // BackgroundWorkerBuilder::new("Background Worker Source Object Update")
     //     .set_function("background_worker_main")
@@ -50,28 +66,31 @@ pub extern "C" fn _PG_init() {
 }
 
 
-// #[pg_guard]
-// #[no_mangle]
-// pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
-//     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
+#[pg_guard]
+#[no_mangle]
+pub extern "C" fn background_worker_guc(_arg: pg_sys::Datum) {
+    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
 
-//     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
-//         // Retrieve the GUC value
-//         if let Some(db_name_cstr) = guc::EXTENSION_DB_NAME.get() {
-//             if let Ok(db_name_str) = db_name_cstr.to_str() {
-//                 if db_name_str == "pg_undefined_db_name" {
-//                     log!("Database name not set");
-//                 } else {
-//                     log!("The database name in background worker is: {}", db_name_str);
-//                 }
-//             } else {
-//                 log!("Failed to convert database name to a Rust string in background worker.");
-//             }
-//         } else {
-//             log!("The database name is not set in background worker.");
-//         }
-//     }
-// }
+    while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
+        // Retrieve the GUC value
+
+        let database_name = get_guc(guc::PgAutoDWGuc::DatabaseName);
+        log!("Database Name in GUC: {:?}", database_name);
+        // if let Some(db_name_cstr) = guc::EXTENSION_DB_NAME.get() {
+        //     if let Ok(db_name_str) = db_name_cstr.to_str() {
+        //         if db_name_str == "pg_undefined_db_name" {
+        //             log!("Database name not set");
+        //         } else {
+        //             log!("The database name in background worker is: {}", db_name_str);
+        //         }
+        //     } else {
+        //         log!("Failed to convert database name to a Rust string in background worker.");
+        //     }
+        // } else {
+        //     log!("The database name is not set in background worker.");
+        // }
+    }
+}
 
 #[pg_guard]
 #[no_mangle]
@@ -263,5 +282,17 @@ where
     })
 }
 
+
+fn fetch_guc_value(guc_name: &str) -> Option<CString> {
+    let guc_name_cstr = CString::new(guc_name).unwrap();
+    let guc_val = unsafe { pg_sys::GetConfigOptionByName(guc_name_cstr.as_ptr(), std::ptr::null_mut(), true) };
+    if !guc_val.is_null() {
+        let cstr_val = unsafe { CStr::from_ptr(guc_val) };
+        if let Ok(cstr) = CString::new(cstr_val.to_bytes()) {
+            return Some(cstr);
+        }
+    }
+    None
+}
 
 

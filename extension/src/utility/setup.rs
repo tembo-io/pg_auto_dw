@@ -22,6 +22,15 @@ CREATE TABLE table_status (
     name = "create_table_status_table",
 );
 
+// Set Extension DB Name
+extension_sql!( r#"
+DO $$
+BEGIN
+    EXECUTE format('SET pg_auto_dw.database_name TO %L', current_database());
+END $$;
+"#,
+    name = "set_database_name",
+);
 
 
 // TABLE_COLUMN_CAT
