@@ -27,7 +27,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
             // Load Prompts into Results
             let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
-                    log!("Client BG Worker - Source Objects JSON Pulling.");
                     let source_objects_json = client.select(queries::SOURCE_OBJECTS_JSON, None, None)?;
                     let mut v_source_table_prompts: Vec<source_objects::SourceTablePrompt> = Vec::new();
                     for source_object_json in source_objects_json {
@@ -42,9 +41,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                                                                         table_details: table_details
                                                                                     };
 
-                        
-                        
-                        
                         v_source_table_prompts.push(source_table_prompt)
                     }
                     Ok(v_source_table_prompts)
@@ -58,14 +54,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
             for source_table_prompt in v_source_table_prompts {
                 
                 let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Detailsto pretty string");
-                log!("JSON pretty Table Details {}", table_details_json_str);
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
-                log!("JSON pretty Table Column Links{}", table_column_link_json_str);
                 let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_str(&table_column_link_json_str).ok();
-                log!("Test 456 {:?}", table_column_links_o);
-
-                // let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_value(source_table_prompt.table_column_links).ok();
                 
                 // Define generation_json_o outside the runtime.block_on block
                 let mut generation_json_o: Option<serde_json::Value> = None;
@@ -85,8 +76,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     };
                 });
 
-                log!("About to Push this to PG: Json {}", serde_json::to_string_pretty(&generation_json_o).unwrap());
-
                 let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = deserialize_option(generation_json_o);
                 
                 let table_column_links = table_column_links_o.unwrap();
@@ -96,7 +85,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, confidence_score, reason) VALUES ");
 
                 for (index, column_link) in table_column_links.column_links.iter().enumerate() {
-                    log!("{}: Table Column Link Key: {} Ordinal Position {}", index, column_link.pk_source_objects, column_link.column_ordinal_position);
 
                     let not_last = index != table_column_links.column_links.len() - 1;
 
@@ -112,12 +100,8 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             let pk_source_objects = column_link.pk_source_objects;
                             
                             let model_name = "Mixtral";
-
-                            log!("Key {} has values Column No: {} Category: {} Confidence: {} Reason: {}", pk_source_objects, column_no, category, confidence_score, reason);
                             
-                            //(11, 'Mistral', 'Business Key', 0.99, 'The column ''seller_id'' is a primary key, which is a strong indicator of a Business Key.',
                             if not_last {
-                                // This is the last iteration
                                 insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, confidence_score, reason));
                             } else {
                                 insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, confidence_score, reason));
@@ -127,20 +111,16 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     }
                 }
                 
-                log!("Insert SQL: {}", insert_sql);
-                
                 // Push Generation to TABLE TRANSFORMER_RESPONSES 
                 BackgroundWorker::transaction(|| {
                     Spi::connect(|mut client| {
                         _ = client.update(insert_sql.as_str(), None, None);
-                        log!("TABLE TRANSFORMER_RESPONSES UPDATTED!");
+                        log!("TABLE TRANSFORMER_RESPONSES UPDATTED.");
                     })
                 });
-                
             }
         
     }
-    log!("Goodbye from inside the {} BGWorker! ", BackgroundWorker::get_name());
 }
 
 fn deserialize_option<T>(json_option: Option<serde_json::Value>) -> Option<T>
