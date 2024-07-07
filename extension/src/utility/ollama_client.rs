@@ -2,6 +2,8 @@ use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use crate::utility::guc;
+
 #[derive(Serialize)]
 pub struct GenerateRequest {
     pub model: String,
@@ -130,15 +132,19 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
     // Inject new_json into the prompt_template
     let prompt = prompt_template.replace("{new_json}", new_json);
 
+    // GUC Values for the transformer server
+    let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
+    let model = guc::get_guc(guc::PgAutoDWGuc::Model).ok_or("MODEL GUC is not set.")?;
+
     let request = GenerateRequest {
-        model: "mistral".to_string(),
+        model,
         prompt,
         format: "json".to_string(),
         stream: false,
     };
 
     let response = client
-        .post("http://localhost:11434/api/generate")
+        .post(&transformer_server_url)
         .json(&request)
         .send()
         .await?

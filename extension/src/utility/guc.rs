@@ -4,10 +4,23 @@ use std::ffi::CStr;
 
 use anyhow::Result;
 
+// Default not set due to security boundaries associated with extension install.
+// The background process has no way to determine which database the extension is installed in.
+// When the extension is being created, the database name can only be saved at the session level into the GUC.
 pub static PG_AUTO_DW_DATABASE_NAME: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+
+// Default not set, as this will make direct changes to the database
 pub static PG_AUTO_DW_DW_SCHEMA: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
-pub static PG_AUTO_DW_OLLAMA_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
-pub static PG_AUTO_DW_MODEL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+
+// Default Transformer Server URL
+pub static PG_AUTO_DW_TRANSFORMER_SERVER_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
+    CStr::from_bytes_with_nul_unchecked(b"http://localhost:11434/api/generate\0")
+}));
+
+// Default model is "mistral"
+pub static PG_AUTO_DW_MODEL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
+    CStr::from_bytes_with_nul_unchecked(b"mistral\0")
+}));
 
 // Default confidence level value is 0.8
 pub static PG_AUTO_DW_CONFIDENCE_LEVEL: GucSetting<f64> = GucSetting::<f64>::new(0.8);
@@ -34,10 +47,10 @@ pub fn init_guc() {
     );
 
     GucRegistry::define_string_guc(
-        "pg_auto_dw.ollama_url",
-        "Ollama URL for the pg_auto_dw extension.",
-        "Specifies the URL for the Ollama service used by the pg_auto_dw extension.",
-        &PG_AUTO_DW_OLLAMA_URL,
+        "pg_auto_dw.transformer_server_url",
+        "Transformer URL for the pg_auto_dw extension.",
+        "Specifies the URL for the transformer service used by the pg_auto_dw extension.",
+        &PG_AUTO_DW_TRANSFORMER_SERVER_URL,
         GucContext::Suset,
         GucFlags::default(),
     );
@@ -69,7 +82,7 @@ pub fn init_guc() {
 pub enum PgAutoDWGuc {
     DatabaseName,
     DwSchema,
-    OllamaUrl,
+    TransformerServerUrl,
     Model,
     ConfidenceLevel,
 }
@@ -80,7 +93,7 @@ pub fn get_guc(guc: PgAutoDWGuc) -> Option<String> {
     let val = match guc {
         PgAutoDWGuc::DatabaseName => PG_AUTO_DW_DATABASE_NAME.get(),
         PgAutoDWGuc::DwSchema => PG_AUTO_DW_DW_SCHEMA.get(),
-        PgAutoDWGuc::OllamaUrl => PG_AUTO_DW_OLLAMA_URL.get(),
+        PgAutoDWGuc::TransformerServerUrl => PG_AUTO_DW_TRANSFORMER_SERVER_URL.get(),
         PgAutoDWGuc::Model => PG_AUTO_DW_MODEL.get(),
         PgAutoDWGuc::ConfidenceLevel => return Some(PG_AUTO_DW_CONFIDENCE_LEVEL.get().to_string()),
     };

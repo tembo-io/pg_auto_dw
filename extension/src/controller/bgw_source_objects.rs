@@ -10,10 +10,10 @@ use crate::utility::guc;
 #[no_mangle]
 pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
 
-    let database_name_o = guc::get_guc(guc::PgAutoDWGuc::DatabaseName);
+    let optional_database_name = guc::get_guc(guc::PgAutoDWGuc::DatabaseName);
 
     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-    BackgroundWorker::connect_worker_to_spi(database_name_o.as_deref(), None);
+    BackgroundWorker::connect_worker_to_spi(optional_database_name.as_deref(), None);
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
         let result: Result<(), pgrx::spi::Error> = BackgroundWorker::transaction(|| {
