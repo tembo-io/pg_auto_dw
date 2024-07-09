@@ -2,24 +2,22 @@ use pgrx::prelude::*;
 use uuid::Uuid;
 use std::collections::HashMap;
 
+use crate::utility::guc;
 use crate::model::dv_transformer_schema;
 
 pub fn build_dv(dv_objects_query: &str) {
-
-    log!("In build_dv function.");
 
     let mut dv_transformer_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
 
     Spi::connect(|client| 
         {
-            log!("In build_dv function - Spi::connect.");
             let dv_transformer_objects_result = client.select(dv_objects_query, None, None);
 
             match dv_transformer_objects_result {
+
                 Ok(dv_transformer_objects) => {
-                    log!("DV Transforer Object Length {}", dv_transformer_objects.len());
+
                     for dv_transformer_object in dv_transformer_objects {
-                        log!("In Tuple Table Loop");
 
                         let schema_name = dv_transformer_object.get_datum_by_ordinal(1).unwrap().value::<String>().unwrap().unwrap();
                         let table_name = dv_transformer_object.get_datum_by_ordinal(2).unwrap().value::<String>().unwrap().unwrap();
@@ -30,8 +28,8 @@ pub fn build_dv(dv_objects_query: &str) {
                         let table_oid: u32 = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<u32>().unwrap().unwrap();
                         let column_ordinal_position = dv_transformer_object.get_datum_by_ordinal(8).unwrap().value::<i16>().unwrap().unwrap();
                         
-                        log!("dv_transformer_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                        schema_name, table_name, column_category, column_name, column_type_name, system_id, table_oid, column_ordinal_position);
+                        // log!("dv_transformer_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
+                        // schema_name, table_name, column_category, column_name, column_type_name, system_id, table_oid, column_ordinal_position);
 
                         let column_category = ColumnCategory::from_str(&column_category);
 
@@ -120,13 +118,16 @@ pub fn build_dv(dv_objects_query: &str) {
             descriptors 
         };
 
-        log!("Business Key for DV Generation: {:?}", business_key);
+        // log!("Business Key for DV Generation: {:?}", business_key);
         business_key_v.push(business_key);
     }
+
+    let dw_schema = guc::get_guc(guc::PgAutoDWGuc::DwSchema).expect("DW SCHEMA GUC is not set.");
 
     // Build DV
     // Push DV Function
     let mut dv_ddl_sql = String::new();
+
     for business_key in business_key_v {
 
         let mut hub_bks = String::new();
@@ -139,14 +140,14 @@ pub fn build_dv(dv_objects_query: &str) {
 
         let hub = 
             format!(r#"
-                CREATE TABLE dw_dev.hub_{} (
+                CREATE TABLE {}.hub_{} (
                     hub_{}_hk VARCHAR NOT NULL,
                     load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
                     record_source VARCHAR NOT NULL{}
                 );
-            "#, business_key.name, business_key.name, hub_bks);
+            "#, dw_schema, business_key.name, business_key.name, hub_bks);
 
-        log!("Hub SQL: {}", hub);
+        // log!("Hub SQL: {}", hub);
         dv_ddl_sql.push_str(&format!(
             r#"
             {}"#, hub));
@@ -170,26 +171,26 @@ pub fn build_dv(dv_objects_query: &str) {
 
         let sat = 
             format!(r#"
-                CREATE TABLE dw_dev.sat_{} (
+                CREATE TABLE {}.sat_{} (
                     hub_{}_hk VARCHAR NOT NULL,
                     load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
                     record_source VARCHAR NOT NULL,
                     sat_{}_hd VARCHAR NOT NULL{}
                 );
-            "#, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
+            "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
 
         let sat_sensitive = 
             format!(r#"
-                CREATE TABLE dw_dev.sat_{}_sensitive_data (
+                CREATE TABLE {}.sat_{}_sensitive_data (
                     hub_{}_hk VARCHAR NOT NULL,
                     load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
                     record_source VARCHAR NOT NULL,
                     sat_{}_hd VARCHAR NOT NULL{}
                 );
-            "#, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
+            "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
         
         if sat_descriptors.len() > 0 {
-            log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
+            // log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
             dv_ddl_sql.push_str(&format!(
                 r#"
                 {}"#, sat));
@@ -197,12 +198,12 @@ pub fn build_dv(dv_objects_query: &str) {
             log!("No Sat Fields");
         }
         if sat_descriptors_sensitive.len() > 0 {
-            log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
+            // log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
             dv_ddl_sql.push_str(&format!(
                 r#"
                 {}"#, sat_sensitive));
         } else {
-            log!("No Sensitigve Sat Fields");
+            log!("No Sensitive Sat Fields");
         }
     }
 
@@ -233,7 +234,7 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is
         descriptor_link,
         is_sensitive: is_sensitive,
     };
-    log!("dv Enity Object {:?}", &descriptor);
+    // log!("dv Enity Object {:?}", &descriptor);
     descriptor
 }
 

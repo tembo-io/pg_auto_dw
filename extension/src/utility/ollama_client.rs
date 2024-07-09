@@ -13,6 +13,7 @@ pub struct GenerateRequest {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct GenerateResponse {
     pub model: String,
     pub created_at: String,
