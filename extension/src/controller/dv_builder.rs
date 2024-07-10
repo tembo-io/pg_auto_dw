@@ -1,6 +1,7 @@
 use pgrx::prelude::*;
 use uuid::Uuid;
 use std::collections::HashMap;
+use chrono::Utc;
 
 use crate::utility::guc;
 use crate::model::dv_transformer_schema;
@@ -62,7 +63,7 @@ pub fn build_dv(dv_objects_query: &str) {
     );
 
     // Build a Vector of BusinessKey's
-    let mut business_key_v: Vec<dv_transformer_schema::BusinessKey> = Vec::new();
+    let mut business_keys: Vec<dv_transformer_schema::BusinessKey> = Vec::new();
     for dv_transformer_objects_v in dv_transformer_objects_hm {
 
         let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
@@ -119,20 +120,21 @@ pub fn build_dv(dv_objects_query: &str) {
         };
 
         // log!("Business Key for DV Generation: {:?}", business_key);
-        business_key_v.push(business_key);
+        business_keys.push(business_key);
     }
 
     let dw_schema = guc::get_guc(guc::PgAutoDWGuc::DwSchema).expect("DW SCHEMA GUC is not set.");
+
 
     // Build DV
     // Push DV Function
     let mut dv_ddl_sql = String::new();
 
-    for business_key in business_key_v {
+    for business_key in &business_keys {
 
         let mut hub_bks = String::new();
 
-        for part_link in business_key.business_key_part_links {
+        for part_link in &business_key.business_key_part_links {
             let r = format!(r#",
                 {}_bk VARCHAR"#, part_link.alias);
             hub_bks.push_str(&r);
@@ -218,7 +220,24 @@ pub fn build_dv(dv_objects_query: &str) {
         }
     );
 
+
+    // Build DVTransformerSchema
+
+    // Get the current time in GMT
+    let now_gmt = Utc::now().naive_utc();
+
+    let dv_transformer_schema = dv_transformer_schema::DVTransformerSchema {
+        id: Uuid::new_v4(),
+        dw_schema,
+        create_timestamp_gmt: now_gmt,
+        modified_timestamp_gmt: now_gmt,
+        business_keys,
+    };
+
+    log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
 }
+
+
 
 fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
     let descriptor_link_id = Uuid::new_v4();

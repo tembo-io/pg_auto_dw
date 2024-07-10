@@ -1,14 +1,17 @@
 use uuid::Uuid;
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DVTransformerSchema {
     #[serde(rename = "ID")]
     pub id: Uuid,
+    #[serde(rename = "DW Schema")]
+    pub dw_schema: String,
     #[serde(rename = "Create Date")]
-    pub create_date: String,
+    pub create_timestamp_gmt: NaiveDateTime,
     #[serde(rename = "Modified Date")]
-    pub modified_date: String,
+    pub modified_timestamp_gmt: NaiveDateTime,
     #[serde(rename = "Business Keys")]
     pub business_keys: Vec<BusinessKey>,
 }
