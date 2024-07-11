@@ -319,11 +319,10 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
         let satellite_sql_key = descriptor.orbit.clone() + &sensitive_string;
         let desc_column_name = &descriptor.descriptor_link.alias;
         let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
-        let sat_descriptor_sql_part: String = format!(r#",
-                                {} {}"#, desc_column_name, desc_column_type);
+        let sat_descriptor_sql_part: String = format!(",\n    {} {}", desc_column_name, desc_column_type);
 
         if let Some(existing_sat_sql) = satellite_sqls.get_mut(&satellite_sql_key) {
-            if let Some(pos) = existing_sat_sql.find("\n);") {
+            if let Some(pos) = existing_sat_sql.find(");") {
                 existing_sat_sql.insert_str(pos, &sat_descriptor_sql_part);
             } else {
                 println!("The substring \");\" was not found in the original string.");
@@ -335,8 +334,7 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
                         hub_{}_hk VARCHAR NOT NULL,
                         load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
                         record_source VARCHAR NOT NULL,
-                        sat_{}_hd VARCHAR NOT NULL{}
-                    );
+                        sat_{}_hd VARCHAR NOT NULL{});
                 "#, dw_schema, satellite_sql_key, business_key.name, descriptor.orbit, sat_descriptor_sql_part);
             satellite_sqls.insert(satellite_sql_key, begin_sat_sql);
         }
