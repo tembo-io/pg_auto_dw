@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use chrono::Utc;
 
 use crate::utility::guc;
-use crate::model::dv_transformer_schema;
+use crate::model::dv_transformer_schema::{self, BusinessKey};
 
 pub fn build_dv(dv_objects_query: &str) {
 
@@ -81,12 +81,13 @@ pub fn build_dv(dv_objects_query: &str) {
                 column_ordinal_position: dv_transformer_object.column_ordinal_position,
                 column_type_name: dv_transformer_object.column_type_name.clone(),
             };
+            let orbit = dv_transformer_object.table_name.clone();
 
             if dv_transformer_object.column_category == ColumnCategory::Descriptor {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, false);
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, orbit, false);
                 descriptors.push(descriptor);
             } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, true);
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, orbit, true);
                 descriptors.push(descriptor);
             }
         }
@@ -132,81 +133,85 @@ pub fn build_dv(dv_objects_query: &str) {
 
     for business_key in &business_keys {
 
-        let mut hub_bks = String::new();
+        let dv_business_key_ddl_sql = build_sql_from_business_key(&dw_schema, business_key);
+        dv_ddl_sql.push_str(&dv_business_key_ddl_sql);
 
-        for part_link in &business_key.business_key_part_links {
-            let r = format!(r#",
-                {}_bk VARCHAR"#, part_link.alias);
-            hub_bks.push_str(&r);
-        }
+        // dv_business_key_ddl_sql
+        // let mut hub_bks = String::new();
 
-        let hub = 
-            format!(r#"
-                CREATE TABLE {}.hub_{} (
-                    hub_{}_hk VARCHAR NOT NULL,
-                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-                    record_source VARCHAR NOT NULL{}
-                );
-            "#, dw_schema, business_key.name, business_key.name, hub_bks);
+        // for part_link in &business_key.business_key_part_links {
+        //     let r = format!(r#",
+        //         {}_bk VARCHAR"#, part_link.alias);
+        //     hub_bks.push_str(&r);
+        // }
 
-        // log!("Hub SQL: {}", hub);
-        dv_ddl_sql.push_str(&format!(
-            r#"
-            {}"#, hub));
+        // let hub = 
+        //     format!(r#"
+        //         CREATE TABLE {}.hub_{} (
+        //             hub_{}_hk VARCHAR NOT NULL,
+        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        //             record_source VARCHAR NOT NULL{}
+        //         );
+        //     "#, dw_schema, business_key.name, business_key.name, hub_bks);
 
-        // TODO: Have an unlimited number of satellites "orbits."
-        let mut sat_descriptors = String::new();
-        let mut sat_descriptors_sensitive = String::new();
+        // // log!("Hub SQL: {}", hub);
+        // dv_ddl_sql.push_str(&format!(
+        //     r#"
+        //     {}"#, hub));
 
-        for descriptor in &business_key.descriptors {
-            let desc_column_name = &descriptor.descriptor_link.alias;
-            let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
-            let r = format!(r#",
-                                    {} {}"#, desc_column_name, desc_column_type);
+        // // TODO: Have an unlimited number of satellites "orbits."
+        // let mut sat_descriptors = String::new();
+        // let mut sat_descriptors_sensitive = String::new();
 
-            if !descriptor.is_sensitive {
-                sat_descriptors.push_str(&r);
-            } else {
-                sat_descriptors_sensitive.push_str(&r);
-            }
-        }
+        // for descriptor in &business_key.descriptors {
+        //     let desc_column_name = &descriptor.descriptor_link.alias;
+        //     let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
+        //     let r = format!(r#",
+        //                             {} {}"#, desc_column_name, desc_column_type);
 
-        let sat = 
-            format!(r#"
-                CREATE TABLE {}.sat_{} (
-                    hub_{}_hk VARCHAR NOT NULL,
-                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-                    record_source VARCHAR NOT NULL,
-                    sat_{}_hd VARCHAR NOT NULL{}
-                );
-            "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
+        //     if !descriptor.is_sensitive {
+        //         sat_descriptors.push_str(&r);
+        //     } else {
+        //         sat_descriptors_sensitive.push_str(&r);
+        //     }
+        // }
 
-        let sat_sensitive = 
-            format!(r#"
-                CREATE TABLE {}.sat_{}_sensitive_data (
-                    hub_{}_hk VARCHAR NOT NULL,
-                    load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-                    record_source VARCHAR NOT NULL,
-                    sat_{}_hd VARCHAR NOT NULL{}
-                );
-            "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
+        // let sat = 
+        //     format!(r#"
+        //         CREATE TABLE {}.sat_{} (
+        //             hub_{}_hk VARCHAR NOT NULL,
+        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        //             record_source VARCHAR NOT NULL,
+        //             sat_{}_hd VARCHAR NOT NULL{}
+        //         );
+        //     "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
+
+        // let sat_sensitive = 
+        //     format!(r#"
+        //         CREATE TABLE {}.sat_{}_sensitive_data (
+        //             hub_{}_hk VARCHAR NOT NULL,
+        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        //             record_source VARCHAR NOT NULL,
+        //             sat_{}_hd VARCHAR NOT NULL{}
+        //         );
+        //     "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
         
-        if sat_descriptors.len() > 0 {
-            // log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
-            dv_ddl_sql.push_str(&format!(
-                r#"
-                {}"#, sat));
-        } else {
-            log!("No Sat Fields");
-        }
-        if sat_descriptors_sensitive.len() > 0 {
-            // log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
-            dv_ddl_sql.push_str(&format!(
-                r#"
-                {}"#, sat_sensitive));
-        } else {
-            log!("No Sensitive Sat Fields");
-        }
+        // if sat_descriptors.len() > 0 {
+        //     // log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
+        //     dv_ddl_sql.push_str(&format!(
+        //         r#"
+        //         {}"#, sat));
+        // } else {
+        //     log!("No Sat Fields");
+        // }
+        // if sat_descriptors_sensitive.len() > 0 {
+        //     // log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
+        //     dv_ddl_sql.push_str(&format!(
+        //         r#"
+        //         {}"#, sat_sensitive));
+        // } else {
+        //     log!("No Sensitive Sat Fields");
+        // }
     }
 
     log!("DDL Full: {}", &dv_ddl_sql);
@@ -237,9 +242,7 @@ pub fn build_dv(dv_objects_query: &str) {
     log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
 }
 
-
-
-fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
+fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
     let descriptor_link_id = Uuid::new_v4();
     let descriptor_link = dv_transformer_schema::DescriptorLink {
         id: descriptor_link_id,
@@ -251,7 +254,8 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, is
     let descriptor = dv_transformer_schema::Descriptor {
         id: descriptor_id,
         descriptor_link,
-        is_sensitive: is_sensitive,
+        orbit,
+        is_sensitive,
     };
     // log!("dv Enity Object {:?}", &descriptor);
     descriptor
@@ -270,6 +274,82 @@ fn get_business_key_part_link(alias: String, entity: dv_transformer_schema::Enti
     };
 
     business_key_link
+}
+
+fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -> String {
+    let mut dv_business_key_ddl_sql = String::new();
+
+    // Hub Buildout
+    let mut hub_bks = String::new();
+
+    for part_link in &business_key.business_key_part_links {
+        let r = format!(r#",
+            {}_bk VARCHAR"#, part_link.alias);
+        hub_bks.push_str(&r);
+    }
+
+    let hub_sql = 
+    format!(r#"
+        CREATE TABLE {}.hub_{} (
+            hub_{}_hk VARCHAR NOT NULL,
+            load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+            record_source VARCHAR NOT NULL{}
+        );
+    "#, dw_schema, business_key.name, business_key.name, hub_bks);
+
+    // log!("Hub SQL: {}", hub);
+    dv_business_key_ddl_sql.push_str(&format!(
+        r#"
+        {}"#, hub_sql));
+
+    // Sat Buildout
+
+    let mut satellite_sqls: HashMap<String, String> = HashMap::new(); 
+
+    for descriptor in &business_key.descriptors {
+
+        let sensitive_string = {
+            if descriptor.is_sensitive == true {
+                "_sensitive".to_string()
+            } else {
+                "".to_string()
+            }
+        };
+
+        let satellite_sql_key = descriptor.orbit.clone() + &sensitive_string;
+        let desc_column_name = &descriptor.descriptor_link.alias;
+        let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
+        let sat_descriptor_sql_part: String = format!(r#",
+                                {} {}"#, desc_column_name, desc_column_type);
+
+        if let Some(existing_sat_sql) = satellite_sqls.get_mut(&satellite_sql_key) {
+            if let Some(pos) = existing_sat_sql.find("\n);") {
+                existing_sat_sql.insert_str(pos, &sat_descriptor_sql_part);
+            } else {
+                println!("The substring \");\" was not found in the original string.");
+            }
+        } else {
+            let begin_sat_sql = 
+                format!(r#"
+                    CREATE TABLE {}.sat_{} (
+                        hub_{}_hk VARCHAR NOT NULL,
+                        load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                        record_source VARCHAR NOT NULL,
+                        sat_{}_hd VARCHAR NOT NULL{}
+                    );
+                "#, dw_schema, satellite_sql_key, business_key.name, descriptor.orbit, sat_descriptor_sql_part);
+            satellite_sqls.insert(satellite_sql_key, begin_sat_sql);
+        }
+
+    }
+
+    // TODO: Map sats to dv_business_key_ddl_sql
+    for satellite_sql in satellite_sqls {
+        dv_business_key_ddl_sql.push_str(&satellite_sql.1);
+    }
+    // dv_business_key_ddl_sql.push_str(string)
+
+    dv_business_key_ddl_sql
 }
 
 #[derive(Debug, PartialEq)]

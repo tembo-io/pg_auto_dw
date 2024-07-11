@@ -46,6 +46,8 @@ pub struct Descriptor {
     pub id: Uuid,
     #[serde(rename = "Descriptor Link")]
     pub descriptor_link: DescriptorLink,
+    #[serde(rename = "Orbit")]
+    pub orbit: String,
     #[serde(rename = "Is Sensitive")]
     pub is_sensitive: bool,
 }
