@@ -105,8 +105,7 @@ pub fn build_dv(dv_objects_query: &str) {
                 column_type_name: dv_transformer_object.column_type_name.clone(),
             };
 
-            
-            if dv_transformer_object.column_category == ColumnCategory::BusinessKey {
+            if dv_transformer_object.column_category == ColumnCategory::BusinessKeyPart {
                 let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), entity);
                 business_key_part_links.push(business_key_part_link);
             }
@@ -126,7 +125,6 @@ pub fn build_dv(dv_objects_query: &str) {
 
     let dw_schema = guc::get_guc(guc::PgAutoDWGuc::DwSchema).expect("DW SCHEMA GUC is not set.");
 
-
     // Build DV
     // Push DV Function
     let mut dv_ddl_sql = String::new();
@@ -135,83 +133,6 @@ pub fn build_dv(dv_objects_query: &str) {
 
         let dv_business_key_ddl_sql = build_sql_from_business_key(&dw_schema, business_key);
         dv_ddl_sql.push_str(&dv_business_key_ddl_sql);
-
-        // dv_business_key_ddl_sql
-        // let mut hub_bks = String::new();
-
-        // for part_link in &business_key.business_key_part_links {
-        //     let r = format!(r#",
-        //         {}_bk VARCHAR"#, part_link.alias);
-        //     hub_bks.push_str(&r);
-        // }
-
-        // let hub = 
-        //     format!(r#"
-        //         CREATE TABLE {}.hub_{} (
-        //             hub_{}_hk VARCHAR NOT NULL,
-        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-        //             record_source VARCHAR NOT NULL{}
-        //         );
-        //     "#, dw_schema, business_key.name, business_key.name, hub_bks);
-
-        // // log!("Hub SQL: {}", hub);
-        // dv_ddl_sql.push_str(&format!(
-        //     r#"
-        //     {}"#, hub));
-
-        // // TODO: Have an unlimited number of satellites "orbits."
-        // let mut sat_descriptors = String::new();
-        // let mut sat_descriptors_sensitive = String::new();
-
-        // for descriptor in &business_key.descriptors {
-        //     let desc_column_name = &descriptor.descriptor_link.alias;
-        //     let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
-        //     let r = format!(r#",
-        //                             {} {}"#, desc_column_name, desc_column_type);
-
-        //     if !descriptor.is_sensitive {
-        //         sat_descriptors.push_str(&r);
-        //     } else {
-        //         sat_descriptors_sensitive.push_str(&r);
-        //     }
-        // }
-
-        // let sat = 
-        //     format!(r#"
-        //         CREATE TABLE {}.sat_{} (
-        //             hub_{}_hk VARCHAR NOT NULL,
-        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-        //             record_source VARCHAR NOT NULL,
-        //             sat_{}_hd VARCHAR NOT NULL{}
-        //         );
-        //     "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors); // TODO: Should be the name of source table unless specified.
-
-        // let sat_sensitive = 
-        //     format!(r#"
-        //         CREATE TABLE {}.sat_{}_sensitive_data (
-        //             hub_{}_hk VARCHAR NOT NULL,
-        //             load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-        //             record_source VARCHAR NOT NULL,
-        //             sat_{}_hd VARCHAR NOT NULL{}
-        //         );
-        //     "#, dw_schema, business_key.name, business_key.name, business_key.name, sat_descriptors_sensitive); // TODO: Should be the name of source table unless specified.
-        
-        // if sat_descriptors.len() > 0 {
-        //     // log!("Sat SQL: {} \n Length {}", sat, sat_descriptors.len());
-        //     dv_ddl_sql.push_str(&format!(
-        //         r#"
-        //         {}"#, sat));
-        // } else {
-        //     log!("No Sat Fields");
-        // }
-        // if sat_descriptors_sensitive.len() > 0 {
-        //     // log!("Sat Sensitive SQL: {} \n Length {}", sat_sensitive, sat_descriptors_sensitive.len());
-        //     dv_ddl_sql.push_str(&format!(
-        //         r#"
-        //         {}"#, sat_sensitive));
-        // } else {
-        //     log!("No Sensitive Sat Fields");
-        // }
     }
 
     log!("DDL Full: {}", &dv_ddl_sql);
@@ -352,7 +273,7 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
 
 #[derive(Debug, PartialEq)]
 enum ColumnCategory {
-    BusinessKey,
+    BusinessKeyPart,
     Descriptor,
     DescriptorSensitive,
 }
@@ -360,7 +281,7 @@ enum ColumnCategory {
 impl ColumnCategory {
     fn from_str(input: &str) -> ColumnCategory {
         match input {
-            "Business Key" => ColumnCategory::BusinessKey,
+            "Business Key Part" => ColumnCategory::BusinessKeyPart,
             "Descriptor" => ColumnCategory::Descriptor,
             "Descriptor - Sensitive" => ColumnCategory::DescriptorSensitive,
             _ => panic!("'{}' is not a valid ColumnCategory", input),

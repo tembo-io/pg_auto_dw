@@ -66,7 +66,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     // Get Generation
                     generation_json_o = match ollama_client::send_request(table_details_json_str.as_str()).await {
                         Ok(response_json) => {
-                            log!("Ollama client request successful.");
+                            log!("Ollama client request successful. {:?}", response_json);
                             Some(response_json)
                         },
                         Err(e) => {
