@@ -43,6 +43,10 @@ pub const SOURCE_COLUMN: &str = r#"
                     'Model: ' || model_name || 
                     ' categorized this column as a ' || category || 
                     ' with a confidence of ' || CONCAT((t.confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+					CASE
+						WHEN t.business_key_name <> 'NA' THEN 'Further, Business Key Part has been associated with Business Key ' ||  UPPER(t.business_key_name) || '.  '
+						ELSE ''
+					END ||
                     'Model Reasoning: ' || t.reason
                     )
                 ELSE '-'
@@ -431,21 +435,22 @@ pub fn insert_into_build_call(build_id: &str, build_flag: &str, build_status: &s
 #[no_mangle]
 pub fn build_object_pull(build_id: &str) -> String {
     format!(r#"
-WITH system AS (
-	SELECT system_identifier AS id FROM pg_control_system() LIMIT 1
-)
-SELECT 
-schema_name::TEXT AS schema_name, 
-table_name::TEXT AS table_name, 
-category::TEXT AS column_category, 
-column_name::TEXT AS column_name, 
-column_type_name::TEXT AS column_type_name, 
-system.id::BIGINT AS system_id,
-so.table_oid::OID as table_oid,
-so.column_ordinal_position::SMALLINT AS column_ordinal_position
-FROM system, auto_dw.build_call AS bc
-LEFT JOIN auto_dw.transformer_responses AS t ON bc.fk_transformer_responses = t.pk_transformer_responses
-LEFT JOIN auto_dw.source_objects AS so ON t.fk_source_objects = so.pk_source_objects
-WHERE build_id = '{}';
-"#, build_id)
+		WITH system AS (
+			SELECT system_identifier AS id FROM pg_control_system() LIMIT 1
+		)
+		SELECT 
+		schema_name::TEXT AS schema_name, 
+		table_name::TEXT AS table_name, 
+		category::TEXT AS column_category,
+		business_key_name::TEXT AS business_key_name,
+		column_name::TEXT AS column_name, 
+		column_type_name::TEXT AS column_type_name, 
+		system.id::BIGINT AS system_id,
+		so.table_oid::OID as table_oid,
+		so.column_ordinal_position::SMALLINT AS column_ordinal_position
+		FROM system, auto_dw.build_call AS bc
+		LEFT JOIN auto_dw.transformer_responses AS t ON bc.fk_transformer_responses = t.pk_transformer_responses
+		LEFT JOIN auto_dw.source_objects AS so ON t.fk_source_objects = so.pk_source_objects
+		WHERE build_id = '{}';
+		"#, build_id)
 }

@@ -21,6 +21,8 @@ pub struct Response {
 pub struct GenerationColumnDetail {
     #[serde(rename = "Category")]
     pub category: String,
+    #[serde(rename = "Business Key Name")]
+    pub business_key_name: String,
     #[serde(rename = "Column No")]
     pub column_no: i32,
     #[serde(rename = "Confidence")]
@@ -35,8 +37,6 @@ pub struct GenerationTableDetail {
     pub schema_name: String,
     #[serde(rename = "Table Name")]
     pub table_name: String,
-    // #[serde(rename = "Business Key Name")]
-    // pub business_key_name: String,
     #[serde(rename = "Column Details")]
     pub response_column_details: Vec<GenerationColumnDetail>,
 }

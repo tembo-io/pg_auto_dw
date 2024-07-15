@@ -82,7 +82,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 let generation_table_detail = generation_table_detail_o.unwrap();
 
                 // Build the SQL INSERT statement
-                let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, confidence_score, reason) VALUES ");
+                let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
 
                 for (index, column_link) in table_column_links.column_links.iter().enumerate() {
 
@@ -94,6 +94,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             let column_detail = &generation_table_detail.response_column_details[index];
                             
                             let category = &column_detail.category.replace("'", "''");
+                            let business_key_name = &column_detail.business_key_name.replace("'", "''");
                             let confidence_score = &column_detail.confidence;
                             let reason = &column_detail.reason.replace("'", "''");
                             let pk_source_objects = column_link.pk_source_objects;
@@ -101,9 +102,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             let model_name = "Mixtral";
                             
                             if not_last {
-                                insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, confidence_score, reason));
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
                             } else {
-                                insert_sql.push_str(&format!("({}, '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, confidence_score, reason));
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
                             }
                         }
                         None => {break;}

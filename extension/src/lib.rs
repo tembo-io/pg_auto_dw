@@ -23,7 +23,7 @@ fn hello_pg_auto_dw() -> &'static str {
 // }
 
 #[pg_extern(name="go")]
-fn go_no() -> String {
+fn go_default() -> String {
     let build_id = Uuid::new_v4();
     let message = format!("Build ID: {} | Data warehouse tables are currently being built.", build_id);
     info!("{}", message);

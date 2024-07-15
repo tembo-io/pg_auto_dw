@@ -23,11 +23,12 @@ pub fn build_dv(dv_objects_query: &str) {
                         let schema_name = dv_transformer_object.get_datum_by_ordinal(1).unwrap().value::<String>().unwrap().unwrap();
                         let table_name = dv_transformer_object.get_datum_by_ordinal(2).unwrap().value::<String>().unwrap().unwrap();
                         let column_category = dv_transformer_object.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
-                        let column_name = dv_transformer_object.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
-                        let column_type_name = dv_transformer_object.get_datum_by_ordinal(5).unwrap().value::<String>().unwrap().unwrap();
-                        let system_id = dv_transformer_object.get_datum_by_ordinal(6).unwrap().value::<i64>().unwrap().unwrap();
-                        let table_oid: u32 = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<u32>().unwrap().unwrap();
-                        let column_ordinal_position = dv_transformer_object.get_datum_by_ordinal(8).unwrap().value::<i16>().unwrap().unwrap();
+                        let business_key_name = dv_transformer_object.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                        let column_name = dv_transformer_object.get_datum_by_ordinal(5).unwrap().value::<String>().unwrap().unwrap();
+                        let column_type_name = dv_transformer_object.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                        let system_id = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<i64>().unwrap().unwrap();
+                        let table_oid: u32 = dv_transformer_object.get_datum_by_ordinal(8).unwrap().value::<u32>().unwrap().unwrap();
+                        let column_ordinal_position = dv_transformer_object.get_datum_by_ordinal(9).unwrap().value::<i16>().unwrap().unwrap();
                         
                         // log!("dv_transformer_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
                         // schema_name, table_name, column_category, column_name, column_type_name, system_id, table_oid, column_ordinal_position);
@@ -37,7 +38,8 @@ pub fn build_dv(dv_objects_query: &str) {
                         let transformer_object: TransformerObject = 
                             TransformerObject { 
                                 schema_name, 
-                                table_name, 
+                                table_name,
+                                business_key_name,
                                 column_name, 
                                 column_type_name, 
                                 system_id, 
@@ -82,6 +84,7 @@ pub fn build_dv(dv_objects_query: &str) {
                 column_type_name: dv_transformer_object.column_type_name.clone(),
             };
             let orbit = dv_transformer_object.table_name.clone();
+            // let orbit = dv_transformer_object.business_key_name.clone();
 
             if dv_transformer_object.column_category == ColumnCategory::Descriptor {
                 let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, orbit, false);
@@ -111,10 +114,21 @@ pub fn build_dv(dv_objects_query: &str) {
             }
         }
 
+        // TODO: Handle multiple business keys for link tables. Ensure appropriate error handling!
+        let business_key_name: String = {
+            let mut business_key_name = String::new();
+            for dv_transformer_object in &dv_transformer_objects_v.1 {
+                if dv_transformer_object.business_key_name.to_lowercase() != "na" {
+                    business_key_name = dv_transformer_object.business_key_name.to_lowercase().clone();
+                }
+            }
+            business_key_name
+        };
+
         let business_key_id = Uuid::new_v4();
         let business_key = dv_transformer_schema::BusinessKey {
             id: business_key_id,
-            name: dv_transformer_objects_v.1[0].table_name.clone(),
+            name: business_key_name,
             business_key_part_links,
             descriptors 
         };
@@ -294,6 +308,7 @@ struct TransformerObject {
     #[allow(dead_code)]
     schema_name: String,
     table_name: String,
+    business_key_name: String,
     column_name: String,
     column_type_name: String,
     system_id: i64,

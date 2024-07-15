@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS transformer_responses
     fk_source_objects BIGINT,
     model_name TEXT,
     category TEXT,
+    business_key_name TEXT,
     confidence_score NUMERIC(3, 2),
     reason TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),

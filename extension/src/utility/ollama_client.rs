@@ -51,29 +51,32 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       {
       "Schema Name": "public",
       "Table Name": "customer",
-      "Business Key Name: "customer",
       "Column Details": [
           {
           "Column No": 1,
           "Category": "Business Key Part",
+          "Business Key Name: "customer",
           "Confidence": 0.99,
           "Reason": "The column 'customer_id' is a primary key, which is a strong indicator of a Business Key."
           },
           {
           "Column No": 2,
           "Category": "Descriptor",
+          "Business Key Name: "NA",
           "Confidence": 0.85,
           "Reason": "The column 'city' provides general descriptive information about the customer, which is typically a Descriptor."
           },
           {
           "Column No": 3,
           "Category": "Descriptor",
+          "Business Key Name: "NA",
           "Confidence": 0.80,
           "Reason": "The column 'state' provides general descriptive information and is less likely to be sensitive, hence categorized as a Descriptor."
           },
           {
           "Column No": 4,
           "Category": "Descriptor - Sensitive",
+          "Business Key Name: "NA",
           "Confidence": 0.90,
           "Reason": "The column 'zip' contains potentially sensitive information about the customer's location, which requires careful handling."
           }
@@ -93,7 +96,7 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       
       Hard Rule: Only categories into the 3 categories listed above.
 
-      Return the output JSON with the column number, the category type, a confidence score, and reason for each column. Plus a business key name at the table level derived from the table name and the attributes associated with the business key parts, excluding terms like "ID," "number," and "Entity," and reflecting only the core business entity name.
+      Return the output JSON with the column number, the category type, a confidence score, and reason for each column. Plus, if the category is a business key part, provide a business key name at the attribute level.  The business key name should be derived from the table name and the attributes associated with the business key parts.  The name should exclude terms like "ID," "number," and "Entity," and reflecting only the core business entity name.  If the category is not a business key part specify "Business Key Name: "NA" as the example above shows.
       "#;
 
     // Inject new_json into the prompt_template
