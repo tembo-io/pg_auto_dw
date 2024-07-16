@@ -34,10 +34,10 @@ pub struct BusinessKeyPartLink {
     pub id: Uuid,
     #[serde(rename = "Alias")]
     pub alias: String,
-    #[serde(rename = "Source Column IDs")]
-    pub source_column_entities: Vec<Entity>,
-    #[serde(rename = "Target Column ID")]
-    pub target_column_id: Option<Entity>,
+    #[serde(rename = "Source Column")]
+    pub source_column_entities: Vec<Column>,
+    #[serde(rename = "Target Column")]
+    pub target_column_id: Option<Column>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -58,14 +58,14 @@ pub struct DescriptorLink {
     pub id: Uuid,
     #[serde(rename = "Alias")]
     pub alias: String,
-    #[serde(rename = "Source Column ID")]
-    pub source_column_entity: Option<Entity>,
-    #[serde(rename = "Target Column ID")]
-    pub target_column_entiy: Option<Entity>,
+    #[serde(rename = "Source Column")]
+    pub source_column_entity: Option<Column>,
+    #[serde(rename = "Target Column")]
+    pub target_column_entiy: Option<Column>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Entity {
+pub struct Column {
     #[serde(rename = "ID")]
     pub id: Uuid,
     #[serde(rename = "System ID")]

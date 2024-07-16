@@ -76,7 +76,7 @@ pub fn build_dv(dv_objects_query: &str) {
 
             let entity_id = Uuid::new_v4();
 
-            let entity = dv_transformer_schema::Entity {
+            let entity = dv_transformer_schema::Column {
                 id: entity_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
@@ -100,7 +100,7 @@ pub fn build_dv(dv_objects_query: &str) {
 
             let entity_id = Uuid::new_v4();
 
-            let entity = dv_transformer_schema::Entity {
+            let entity = dv_transformer_schema::Column {
                 id: entity_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
@@ -175,9 +175,11 @@ pub fn build_dv(dv_objects_query: &str) {
     };
 
     log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
+
+    // TODO: Add 
 }
 
-fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
+fn get_descriptor(column_name: String, entity: dv_transformer_schema::Column, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
     let descriptor_link_id = Uuid::new_v4();
     let descriptor_link = dv_transformer_schema::DescriptorLink {
         id: descriptor_link_id,
@@ -196,9 +198,9 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Entity, or
     descriptor
 }
 
-fn get_business_key_part_link(alias: String, entity: dv_transformer_schema::Entity) -> dv_transformer_schema::BusinessKeyPartLink {
+fn get_business_key_part_link(alias: String, entity: dv_transformer_schema::Column) -> dv_transformer_schema::BusinessKeyPartLink {
     let business_key_part_link_id = Uuid::new_v4();
-    let mut source_column_entities: Vec<dv_transformer_schema::Entity> = Vec::new(); 
+    let mut source_column_entities: Vec<dv_transformer_schema::Column> = Vec::new(); 
     source_column_entities.push(entity);
 
     let business_key_link = dv_transformer_schema::BusinessKeyPartLink {
