@@ -56,3 +56,9 @@ CREATE TABLE IF NOT EXISTS build_call
 	   	REFERENCES auto_dw.transformer_responses(pk_transformer_responses)
 		ON DELETE CASCADE
 );
+
+DROP TABLE IF EXISTS dv_transformer_repo;
+
+CREATE TABLE dv_transformer_repo (
+    schema JSON
+);
