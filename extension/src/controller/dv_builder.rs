@@ -179,11 +179,36 @@ pub fn build_dv(dv_objects_query: &str) {
 
     // Add Target Columns to dv_transformer_schema links.
 
-    add_target_columns_to_dv_transformer_schema(&mut dv_transformer_schema);
+    dv_transformer_schema_add_target_columns(&mut dv_transformer_schema);
     log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
+    dv_transformer_schema_push_to_repo(&dv_transformer_schema);
+
 }
 
-fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+fn dv_transformer_schema_push_to_repo(dv_transformer_schema: &dv_transformer_schema::DVTransformerSchema) {
+
+    let insert_schema_query: &str = r#"
+        INSERT INTO auto_dw.dv_transformer_repo (schema)
+        VALUES ($1)
+        "#; 
+
+    let repo_json_string = serde_json::to_string(dv_transformer_schema).unwrap();
+
+    // Build Tables using DDL
+    Spi::connect( |mut client| {
+        log!("DV Schema: Pushing to REPO TABLE");
+        // client.select(dv_objects_query, None, None);
+        log!("Schema JSON: {}", &repo_json_string);
+        _ = client.update(insert_schema_query, None, 
+                Some(vec![
+                    (PgOid::from(pg_sys::JSONOID), repo_json_string.into_datum())
+                ]));
+        log!("DV Schema: Pushed to REPO TABLE");
+    }
+);
+}
+
+fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
 
     for business_key in &mut dv_transformer_schema.business_keys {
 
