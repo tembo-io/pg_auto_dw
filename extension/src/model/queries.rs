@@ -454,3 +454,121 @@ pub fn build_object_pull(build_id: &str) -> String {
 		WHERE build_id = '{}';
 		"#, build_id)
 }
+
+#[no_mangle]
+pub fn get_column_data(schema_name: &str, table_name: &str, column_name: &str) -> String {
+    format!(r#"
+		WITH 
+		system_qry AS (
+			SELECT system_identifier AS id FROM pg_control_system() LIMIT 1
+		),
+		schema_qry AS (
+			SELECT 
+				pg_namespace.oid AS schema_oid, 
+				pg_namespace.nspname AS schema_name,
+				pg_description.description AS schema_description
+			FROM pg_catalog.pg_namespace
+			LEFT JOIN pg_catalog.pg_description ON 	pg_namespace.oid = pg_description.objoid AND 
+													pg_description.objsubid = 0 -- No Sub Objects
+			WHERE pg_namespace.nspname !~ 'pg_.*' AND pg_namespace.nspname NOT IN ('information_schema', 'auto_dw')
+		),
+		table_qry AS (
+			SELECT 
+				pg_class.oid AS table_oid, 
+				pg_class.relname AS table_name,
+				pg_class.relnamespace AS table_schema_oid,
+				pg_description.description AS table_description
+			FROM pg_catalog.pg_class
+			LEFT JOIN pg_catalog.pg_description ON 	pg_class.oid = pg_description.objoid AND 
+													pg_description.objsubid = 0 -- No Sub Objects
+			WHERE 
+				pg_class.relkind = 'r'  -- 'r' stands for ordinary table
+		),
+		column_qry AS (
+			SELECT 
+				pg_attribute.attrelid AS column_table_oid,
+				pg_attribute.attname AS column_name,
+				pg_attribute.attnum AS column_ordinal_position,
+				pg_attribute.atttypid AS column_type_oid,
+				pg_attribute.atttypmod  AS column_modification_number,
+				pg_catalog.format_type(atttypid, atttypmod) AS column_type_name,
+				pg_description.description AS column_description
+			FROM pg_attribute
+			LEFT JOIN pg_catalog.pg_description ON 	pg_attribute.attrelid = pg_description.objoid AND 
+													pg_attribute.attnum = pg_description.objsubid
+			WHERE 
+				pg_attribute.attnum > 0  -- Only real columns, not system columns
+				AND NOT pg_attribute.attisdropped  -- Only columns that are not dropped
+		),
+		type_qry AS (
+			SELECT
+				oid AS type_oid,
+				typname AS base_type_name
+			FROM pg_type
+		),
+		pk_table_column_qry AS (
+			SELECT
+				conrelid AS table_oid,
+				unnest(conkey) AS column_ordinal_position,
+				1 AS column_pk_ind,
+				conname AS column_pk_name
+			FROM
+				pg_constraint
+			WHERE
+				contype = 'p'
+		),
+		fk_table_column_qry AS (
+			SELECT DISTINCT -- Distinct one column could have multiple FKs.
+				conrelid AS table_oid,
+				unnest(conkey) AS column_ordinal_position,
+				1 AS column_fk_ind
+			FROM
+				pg_constraint
+			WHERE
+				contype = 'f'
+		),
+		source_objects_prep AS (
+			SELECT
+			schema_qry.schema_oid,
+			schema_qry.schema_name,
+			schema_qry.schema_description,
+			table_qry.table_oid,
+			table_qry.table_name,
+			COALESCE(table_qry.table_description, 'NA') AS table_description,
+			column_qry.column_ordinal_position,
+			column_qry.column_name,
+			type_qry.base_type_name AS column_base_type_name,
+			column_qry.column_modification_number,
+			column_qry.column_type_name,
+			COALESCE(column_qry.column_description, 'NA') AS column_description,
+			COALESCE(pk_table_column_qry.column_pk_ind, 0) AS column_pk_ind,
+			COALESCE(pk_table_column_qry.column_pk_name, 'NA') AS column_pk_name,
+			COALESCE(fk_table_column_qry.column_fk_ind, 0) AS column_fk_ind
+			FROM schema_qry
+			LEFT JOIN table_qry ON schema_qry.schema_oid = table_qry.table_schema_oid
+			LEFT JOIN column_qry ON table_qry.table_oid = column_qry.column_table_oid
+			LEFT JOIN type_qry ON column_qry.column_type_oid = type_qry.type_oid
+			LEFT JOIN pk_table_column_qry ON 
+										table_qry.table_oid = pk_table_column_qry.table_oid AND
+										column_qry.column_ordinal_position = pk_table_column_qry.column_ordinal_position
+			LEFT JOIN fk_table_column_qry ON 
+										table_qry.table_oid = fk_table_column_qry.table_oid AND
+										column_qry.column_ordinal_position = fk_table_column_qry.column_ordinal_position
+		)
+		SELECT
+			system_qry.id::BIGINT AS system_id,
+			source_objects_prep.schema_oid::OID as schema_oid,
+			source_objects_prep.schema_name::TEXT AS schema_name, 
+			source_objects_prep.table_name::TEXT AS table_name,
+			source_objects_prep.table_oid::OID as table_oid, 
+			source_objects_prep.column_name::TEXT AS column_name,
+			source_objects_prep.column_ordinal_position::SMALLINT AS column_ordinal_position, 
+			source_objects_prep.column_type_name::TEXT AS column_type_name 
+		FROM source_objects_prep, system_qry
+		WHERE
+		schema_name = '{}' AND
+		table_name = '{}' AND
+		column_name = '{}'
+		;
+		"#, schema_name, table_name, column_name)
+}

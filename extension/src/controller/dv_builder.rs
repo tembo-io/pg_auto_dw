@@ -3,6 +3,7 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use chrono::Utc;
 
+use crate::model::queries;
 use crate::utility::guc;
 use crate::model::dv_transformer_schema::{self, BusinessKey};
 
@@ -166,7 +167,7 @@ pub fn build_dv(dv_objects_query: &str) {
     // Get the current time in GMT
     let now_gmt = Utc::now().naive_utc();
 
-    let dv_transformer_schema = dv_transformer_schema::DVTransformerSchema {
+    let mut dv_transformer_schema = dv_transformer_schema::DVTransformerSchema {
         id: Uuid::new_v4(),
         dw_schema,
         create_timestamp_gmt: now_gmt,
@@ -174,9 +175,133 @@ pub fn build_dv(dv_objects_query: &str) {
         business_keys,
     };
 
-    log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
+    
 
-    // TODO: Add 
+    // Add Target Columns to dv_transformer_schema links.
+
+    add_target_columns_to_dv_transformer_schema(&mut dv_transformer_schema);
+    log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
+}
+
+fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+
+    for business_key in &mut dv_transformer_schema.business_keys {
+
+        // For Descriptors in Business Keys
+        for descriptor in &mut business_key.descriptors {
+            let schema_name = &dv_transformer_schema.dw_schema;
+            let table_name = &{"sat_".to_string() + &descriptor.orbit + {if descriptor.is_sensitive { "_sensitive" } else {""}}};
+            let column_name = &descriptor.descriptor_link.alias;
+            
+            let get_column_data = queries::get_column_data(schema_name, table_name, column_name);
+
+            let column: Option<dv_transformer_schema::Column> = Spi::connect( |client| {
+
+                match client.select(&get_column_data, None, None) {
+                    Ok(column_data) => {
+                        // Only 0 or 1 record should be returned.
+                        if let Some(column_data_record) = column_data.into_iter().next() {
+                            let system_id =  column_data_record.get_datum_by_ordinal(1).unwrap().value::<i64>().unwrap().unwrap();
+                            let _schema_oid =  column_data_record.get_datum_by_ordinal(2).unwrap().value::<u32>().unwrap().unwrap();
+                            let _schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
+                            let _table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                            let table_oid =  column_data_record.get_datum_by_ordinal(5).unwrap().value::<u32>().unwrap().unwrap();
+                            let _column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                            let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
+                            let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
+
+
+                            log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
+                                system_id, _schema_oid, _schema_name, _table_name, table_oid, _column_name, column_ordinal_position, column_type_name);
+
+                            let column_id = Uuid::new_v4();
+
+
+                            let column = dv_transformer_schema::Column {
+                                id: column_id,
+                                system_id,
+                                table_oid,
+                                column_ordinal_position,
+                                column_type_name,
+                            };
+
+                            // descriptor.descriptor_link.target_column_entiy = Some(enity);
+                            return Some(column)
+                            
+                        } else {
+                            log!("Column Data Not available.");
+                            
+                        }
+                        return None
+                    }
+                    Err(e) => {
+                        log!("Target Column Data Error: {:?}", e);
+                        return None
+                    }
+                }
+            });
+
+            descriptor.descriptor_link.target_column_entiy = column;
+        }
+
+        // For Business Key Parts in Business Keys
+        for business_key_part_link in &mut business_key.business_key_part_links {
+            let schema_name = &dv_transformer_schema.dw_schema;
+            let table_name = &{"hub_".to_string() + &business_key.name};
+            let column_name = &(business_key_part_link.alias.clone() + "_bk");
+
+            let get_column_data= queries::get_column_data(schema_name, table_name, column_name);
+
+            let column: Option<dv_transformer_schema::Column> = Spi::connect( |client| {
+
+                match client.select(&get_column_data, None, None) {
+                    Ok(column_data) => {
+                        // Only 0 or 1 record should be returned.
+                        if let Some(column_data_record) = column_data.into_iter().next() {
+                            let system_id =  column_data_record.get_datum_by_ordinal(1).unwrap().value::<i64>().unwrap().unwrap();
+                            let _schema_oid =  column_data_record.get_datum_by_ordinal(2).unwrap().value::<u32>().unwrap().unwrap();
+                            let _schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
+                            let _table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                            let table_oid =  column_data_record.get_datum_by_ordinal(5).unwrap().value::<u32>().unwrap().unwrap();
+                            let _column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                            let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
+                            let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
+
+
+                            log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
+                                system_id, _schema_oid, _schema_name, _table_name, table_oid, _column_name, column_ordinal_position, column_type_name);
+
+                            let column_id = Uuid::new_v4();
+
+
+                            let column = dv_transformer_schema::Column {
+                                id: column_id,
+                                system_id,
+                                table_oid,
+                                column_ordinal_position,
+                                column_type_name,
+                            };
+
+                            // descriptor.descriptor_link.target_column_entiy = Some(enity);
+                            return Some(column)
+                            
+                        } else {
+                            log!("Column Data Not available.");
+                            
+                        }
+                        return None
+                    }
+                    Err(e) => {
+                        log!("Target Column Data Error: {:?}", e);
+                        return None
+                    }
+                }
+            });
+
+            business_key_part_link.target_column_id = column;
+        }
+        
+    }
 }
 
 fn get_descriptor(column_name: String, entity: dv_transformer_schema::Column, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
