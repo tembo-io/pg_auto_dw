@@ -75,10 +75,10 @@ pub fn build_dv(dv_objects_query: &str) {
         // Build Descriptors
         for dv_transformer_object in &dv_transformer_objects_v.1 {
 
-            let entity_id = Uuid::new_v4();
+            let column_data_id = Uuid::new_v4();
 
-            let entity = dv_transformer_schema::Column {
-                id: entity_id,
+            let column_data = dv_transformer_schema::ColumnData {
+                id: column_data_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
                 column_ordinal_position: dv_transformer_object.column_ordinal_position,
@@ -88,10 +88,10 @@ pub fn build_dv(dv_objects_query: &str) {
             // let orbit = dv_transformer_object.business_key_name.clone();
 
             if dv_transformer_object.column_category == ColumnCategory::Descriptor {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, orbit, false);
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), column_data, orbit, false);
                 descriptors.push(descriptor);
             } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), entity, orbit, true);
+                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), column_data, orbit, true);
                 descriptors.push(descriptor);
             }
         }
@@ -99,10 +99,10 @@ pub fn build_dv(dv_objects_query: &str) {
         // Build Business Key Part Links
         for dv_transformer_object in &dv_transformer_objects_v.1 {
 
-            let entity_id = Uuid::new_v4();
+            let column_data_id = Uuid::new_v4();
 
-            let entity = dv_transformer_schema::Column {
-                id: entity_id,
+            let column_data = dv_transformer_schema::ColumnData {
+                id: column_data_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
                 column_ordinal_position: dv_transformer_object.column_ordinal_position,
@@ -110,7 +110,7 @@ pub fn build_dv(dv_objects_query: &str) {
             };
 
             if dv_transformer_object.column_category == ColumnCategory::BusinessKeyPart {
-                let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), entity);
+                let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), column_data);
                 business_key_part_links.push(business_key_part_link);
             }
         }
@@ -195,7 +195,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
             
             let get_column_data = queries::get_column_data(schema_name, table_name, column_name);
 
-            let column: Option<dv_transformer_schema::Column> = Spi::connect( |client| {
+            let column_data: Option<dv_transformer_schema::ColumnData> = Spi::connect( |client| {
 
                 match client.select(&get_column_data, None, None) {
                     Ok(column_data) => {
@@ -217,7 +217,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                             let column_id = Uuid::new_v4();
 
 
-                            let column = dv_transformer_schema::Column {
+                            let column_data = dv_transformer_schema::ColumnData {
                                 id: column_id,
                                 system_id,
                                 table_oid,
@@ -226,7 +226,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                             };
 
                             // descriptor.descriptor_link.target_column_entiy = Some(enity);
-                            return Some(column)
+                            return Some(column_data)
                             
                         } else {
                             log!("Column Data Not available.");
@@ -241,7 +241,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                 }
             });
 
-            descriptor.descriptor_link.target_column_entiy = column;
+            descriptor.descriptor_link.target_column_entiy = column_data;
         }
 
         // For Business Key Parts in Business Keys
@@ -252,7 +252,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
 
             let get_column_data= queries::get_column_data(schema_name, table_name, column_name);
 
-            let column: Option<dv_transformer_schema::Column> = Spi::connect( |client| {
+            let column_data: Option<dv_transformer_schema::ColumnData> = Spi::connect( |client| {
 
                 match client.select(&get_column_data, None, None) {
                     Ok(column_data) => {
@@ -274,7 +274,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                             let column_id = Uuid::new_v4();
 
 
-                            let column = dv_transformer_schema::Column {
+                            let column_data = dv_transformer_schema::ColumnData {
                                 id: column_id,
                                 system_id,
                                 table_oid,
@@ -283,7 +283,7 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                             };
 
                             // descriptor.descriptor_link.target_column_entiy = Some(enity);
-                            return Some(column)
+                            return Some(column_data)
                             
                         } else {
                             log!("Column Data Not available.");
@@ -298,18 +298,18 @@ fn add_target_columns_to_dv_transformer_schema(dv_transformer_schema: &mut dv_tr
                 }
             });
 
-            business_key_part_link.target_column_id = column;
+            business_key_part_link.target_column_id = column_data;
         }
         
     }
 }
 
-fn get_descriptor(column_name: String, entity: dv_transformer_schema::Column, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
+fn get_descriptor(column_name: String, column_data: dv_transformer_schema::ColumnData, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
     let descriptor_link_id = Uuid::new_v4();
     let descriptor_link = dv_transformer_schema::DescriptorLink {
         id: descriptor_link_id,
         alias: column_name, // TODO: Give the user an option to change name in the future - modality TBD.
-        source_column_entity: Some(entity),
+        source_column_entity: Some(column_data),
         target_column_entiy: None,
     };
     let descriptor_id = Uuid::new_v4();
@@ -323,15 +323,15 @@ fn get_descriptor(column_name: String, entity: dv_transformer_schema::Column, or
     descriptor
 }
 
-fn get_business_key_part_link(alias: String, entity: dv_transformer_schema::Column) -> dv_transformer_schema::BusinessKeyPartLink {
+fn get_business_key_part_link(alias: String, column_data: dv_transformer_schema::ColumnData) -> dv_transformer_schema::BusinessKeyPartLink {
     let business_key_part_link_id = Uuid::new_v4();
-    let mut source_column_entities: Vec<dv_transformer_schema::Column> = Vec::new(); 
-    source_column_entities.push(entity);
+    let mut sources_column_data: Vec<dv_transformer_schema::ColumnData> = Vec::new(); 
+    sources_column_data.push(column_data);
 
     let business_key_link = dv_transformer_schema::BusinessKeyPartLink {
         id: business_key_part_link_id,
         alias,
-        source_column_entities: source_column_entities,
+        source_column_entities: sources_column_data,
         target_column_id: None,
     };
 
