@@ -38,7 +38,7 @@ fn go_default() -> String {
 
     let query_build_pull = &queries::build_object_pull(&build_id);
     log!("Executing Query build_object_pull: {}", query_build_pull);
-    controller::dv_builder::build_dv(query_build_pull);
+    controller::dv_builder::build_dv(&build_id, query_build_pull);
 
     message
 }

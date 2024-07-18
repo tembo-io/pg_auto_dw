@@ -60,5 +60,7 @@ CREATE TABLE IF NOT EXISTS build_call
 DROP TABLE IF EXISTS dv_transformer_repo;
 
 CREATE TABLE dv_transformer_repo (
+    build_id TEXT,
+    insert_time  TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
     schema JSON
 );

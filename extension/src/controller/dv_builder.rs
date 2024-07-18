@@ -7,7 +7,7 @@ use crate::model::queries;
 use crate::utility::guc;
 use crate::model::dv_transformer_schema::{self, BusinessKey};
 
-pub fn build_dv(dv_objects_query: &str) {
+pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
     let mut dv_transformer_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
 
@@ -175,21 +175,67 @@ pub fn build_dv(dv_objects_query: &str) {
         business_keys,
     };
 
-    
-
     // Add Target Columns to dv_transformer_schema links.
 
     dv_transformer_schema_add_target_columns(&mut dv_transformer_schema);
     log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
-    dv_transformer_schema_push_to_repo(&dv_transformer_schema);
+
+    dv_transformer_schema_push_to_repo(&build_id, &mut dv_transformer_schema);
+
+    dv_transformer_load_schema_from_build_id(&build_id, &mut dv_transformer_schema);
 
 }
 
-fn dv_transformer_schema_push_to_repo(dv_transformer_schema: &dv_transformer_schema::DVTransformerSchema) {
+fn dv_transformer_load_schema_from_build_id(build_id: &String, dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+    let get_schema_query: &str = r#"
+        SELECT schema
+        FROM auto_dw.dv_transformer_repo
+        WHERE build_id = $1
+    "#;
+
+    // Load Schema w/ Build ID
+    Spi::connect( |client| {
+        log!("DV Schema: Pulling from Repo: {}", build_id);
+        let results = client.select(get_schema_query, None, 
+            Some(vec![
+                (PgOid::from(pg_sys::TEXTOID), build_id.into_datum()),
+            ]));
+        log!("DV Schema: Pushed to REPO TABLE");
+
+        match results {
+            Ok(results) => {
+                if let Some(result) = results.into_iter().next() {
+                    let schema_json = result.get_datum_by_ordinal(1).unwrap().value::<pgrx::Json>().unwrap().unwrap();
+                    let deserialized_schema: Result<dv_transformer_schema::DVTransformerSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
+                    match deserialized_schema {
+                        Ok(deserialized_schema) => {
+                            *dv_transformer_schema = deserialized_schema;
+                            log!("Schema deserialized correctly: JSON{:?}", dv_transformer_schema);
+                        },
+                        Err(_) => {
+                            log!("Schema could not deserialized");
+                        },
+                    }
+                }
+            },
+            Err(_) => {
+                log!("Schema could not deserialized");
+            },
+        }
+
+    });
+}
+
+
+fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+
+    let now_gmt = Utc::now().naive_utc();
+
+    dv_transformer_schema.modified_timestamp_gmt = now_gmt;
 
     let insert_schema_query: &str = r#"
-        INSERT INTO auto_dw.dv_transformer_repo (schema)
-        VALUES ($1)
+        INSERT INTO auto_dw.dv_transformer_repo (build_id, schema)
+        VALUES ($1, $2)
         "#; 
 
     let repo_json_string = serde_json::to_string(dv_transformer_schema).unwrap();
@@ -197,15 +243,16 @@ fn dv_transformer_schema_push_to_repo(dv_transformer_schema: &dv_transformer_sch
     // Build Tables using DDL
     Spi::connect( |mut client| {
         log!("DV Schema: Pushing to REPO TABLE");
-        // client.select(dv_objects_query, None, None);
         log!("Schema JSON: {}", &repo_json_string);
         _ = client.update(insert_schema_query, None, 
-                Some(vec![
-                    (PgOid::from(pg_sys::JSONOID), repo_json_string.into_datum())
-                ]));
+            Some(vec![
+                (PgOid::from(pg_sys::TEXTOID), build_id.into_datum()),
+                (PgOid::from(pg_sys::JSONOID), repo_json_string.into_datum()),
+            ]));
         log!("DV Schema: Pushed to REPO TABLE");
-    }
-);
+        }
+    );
+
 }
 
 fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
