@@ -145,7 +145,6 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
     let mut dv_ddl_sql = String::new();
 
     for business_key in &business_keys {
-
         let dv_business_key_ddl_sql = build_sql_from_business_key(&dw_schema, business_key);
         dv_ddl_sql.push_str(&dv_business_key_ddl_sql);
     }
@@ -182,16 +181,26 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
     dv_transformer_schema_push_to_repo(&build_id, &mut dv_transformer_schema);
 
-    dv_transformer_load_schema_from_build_id(&build_id, &mut dv_transformer_schema);
+    match dv_transformer_load_schema_from_build_id(&build_id) {
+        Some(schema) => {
+            dv_transformer_schema = schema;
+        }
+        None => {}
+    };
 
+    log!("DV Transformer Schema Reloaded: {:?}", &dv_transformer_schema);
+    
 }
 
-fn dv_transformer_load_schema_from_build_id(build_id: &String, dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+fn dv_transformer_load_schema_from_build_id(build_id: &String) -> Option<dv_transformer_schema::DVTransformerSchema> {
     let get_schema_query: &str = r#"
         SELECT schema
         FROM auto_dw.dv_transformer_repo
         WHERE build_id = $1
     "#;
+
+    // Variable to store the result
+    let mut schema_result: Option<dv_transformer_schema::DVTransformerSchema> = None;
 
     // Load Schema w/ Build ID
     Spi::connect( |client| {
@@ -209,8 +218,8 @@ fn dv_transformer_load_schema_from_build_id(build_id: &String, dv_transformer_sc
                     let deserialized_schema: Result<dv_transformer_schema::DVTransformerSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
                     match deserialized_schema {
                         Ok(deserialized_schema) => {
-                            *dv_transformer_schema = deserialized_schema;
-                            log!("Schema deserialized correctly: JSON{:?}", dv_transformer_schema);
+                            log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
+                            schema_result = Some(deserialized_schema);
                         },
                         Err(_) => {
                             log!("Schema could not deserialized");
@@ -224,6 +233,7 @@ fn dv_transformer_load_schema_from_build_id(build_id: &String, dv_transformer_sc
         }
 
     });
+    return schema_result;
 }
 
 
