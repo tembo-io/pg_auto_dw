@@ -1,15 +1,15 @@
 use pgrx::prelude::*;
-use crate::model::dv_transformer_schema::*;
+use crate::model::dv_schema::*;
 
-pub fn dv_transformer_load_schema_from_build_id(build_id: &String) -> Option<DVTransformerSchema> {
+pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
     let get_schema_query: &str = r#"
         SELECT schema
-        FROM auto_dw.dv_transformer_repo
+        FROM auto_dw.dv_repo
         WHERE build_id = $1
     "#;
 
     // Variable to store the result
-    let mut schema_result: Option<DVTransformerSchema> = None;
+    let mut schema_result: Option<DVSchema> = None;
 
     // Load Schema w/ Build ID
     Spi::connect( |client| {
@@ -24,7 +24,7 @@ pub fn dv_transformer_load_schema_from_build_id(build_id: &String) -> Option<DVT
             Ok(results) => {
                 if let Some(result) = results.into_iter().next() {
                     let schema_json = result.get_datum_by_ordinal(1).unwrap().value::<pgrx::Json>().unwrap().unwrap();
-                    let deserialized_schema: Result<DVTransformerSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
+                    let deserialized_schema: Result<DVSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
                     match deserialized_schema {
                         Ok(deserialized_schema) => {
                             log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
@@ -45,7 +45,7 @@ pub fn dv_transformer_load_schema_from_build_id(build_id: &String) -> Option<DVT
     return schema_result;
 }
 
-// Refreshes based on dv_transformer_schema
-fn dv_data_load(dv_transformer_schema: &DVTransformerSchema) {
+// Refreshes based on dv_schema
+fn dv_data_load(dv_schema: &DVSchema) {
 
 }

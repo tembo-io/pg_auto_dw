@@ -5,41 +5,42 @@ use chrono::Utc;
 
 use crate::model::queries;
 use crate::utility::guc;
-use crate::model::dv_transformer_schema::{
-                                            DVTransformerSchema, 
-                                            BusinessKey, 
-                                            BusinessKeyPartLink, 
-                                            Descriptor, 
-                                            DescriptorLink, 
-                                            ColumnData
-                                        };
-use super::dv_loader::dv_transformer_load_schema_from_build_id;
+use crate::model::dv_schema::{
+                                DVSchema, 
+                                BusinessKey, 
+                                BusinessKeyPartLink, 
+                                Descriptor, 
+                                DescriptorLink, 
+                                ColumnData
+                            };
+                            
+use super::dv_loader::dv_load_schema_from_build_id;
 
 pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
-    let mut dv_transformer_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
+    let mut dv_objects_hm: HashMap<u32, Vec<TransformerObject>> = HashMap::new();
 
     Spi::connect(|client| 
         {
-            let dv_transformer_objects_result = client.select(dv_objects_query, None, None);
+            let dv_objects_result = client.select(dv_objects_query, None, None);
 
-            match dv_transformer_objects_result {
+            match dv_objects_result {
 
-                Ok(dv_transformer_objects) => {
+                Ok(dv_objects) => {
 
-                    for dv_transformer_object in dv_transformer_objects {
+                    for dv_object in dv_objects {
 
-                        let schema_name = dv_transformer_object.get_datum_by_ordinal(1).unwrap().value::<String>().unwrap().unwrap();
-                        let table_name = dv_transformer_object.get_datum_by_ordinal(2).unwrap().value::<String>().unwrap().unwrap();
-                        let column_category = dv_transformer_object.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
-                        let business_key_name = dv_transformer_object.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
-                        let column_name = dv_transformer_object.get_datum_by_ordinal(5).unwrap().value::<String>().unwrap().unwrap();
-                        let column_type_name = dv_transformer_object.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
-                        let system_id = dv_transformer_object.get_datum_by_ordinal(7).unwrap().value::<i64>().unwrap().unwrap();
-                        let table_oid: u32 = dv_transformer_object.get_datum_by_ordinal(8).unwrap().value::<u32>().unwrap().unwrap();
-                        let column_ordinal_position = dv_transformer_object.get_datum_by_ordinal(9).unwrap().value::<i16>().unwrap().unwrap();
+                        let schema_name = dv_object.get_datum_by_ordinal(1).unwrap().value::<String>().unwrap().unwrap();
+                        let table_name = dv_object.get_datum_by_ordinal(2).unwrap().value::<String>().unwrap().unwrap();
+                        let column_category = dv_object.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
+                        let business_key_name = dv_object.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                        let column_name = dv_object.get_datum_by_ordinal(5).unwrap().value::<String>().unwrap().unwrap();
+                        let column_type_name = dv_object.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                        let system_id = dv_object.get_datum_by_ordinal(7).unwrap().value::<i64>().unwrap().unwrap();
+                        let table_oid: u32 = dv_object.get_datum_by_ordinal(8).unwrap().value::<u32>().unwrap().unwrap();
+                        let column_ordinal_position = dv_object.get_datum_by_ordinal(9).unwrap().value::<i16>().unwrap().unwrap();
                         
-                        // log!("dv_transformer_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
+                        // log!("dv_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
                         // schema_name, table_name, column_category, column_name, column_type_name, system_id, table_oid, column_ordinal_position);
 
                         let column_category = ColumnCategory::from_str(&column_category);
@@ -58,7 +59,7 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
                             };
 
                         // Bucket TransformerObject by table
-                        dv_transformer_objects_hm
+                        dv_objects_hm
                             .entry(table_oid)
                             .or_insert_with(Vec::new)
                             .push(transformer_object);
@@ -75,50 +76,50 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
     // Build a Vector of BusinessKey's
     let mut business_keys: Vec<BusinessKey> = Vec::new();
-    for dv_transformer_objects_v in dv_transformer_objects_hm {
+    for dv_objects_v in dv_objects_hm {
 
         let mut descriptors: Vec<Descriptor> = Vec::new();
         let mut business_key_part_links: Vec<BusinessKeyPartLink> = Vec::new();
 
         // Build Descriptors
-        for dv_transformer_object in &dv_transformer_objects_v.1 {
+        for dv_object in &dv_objects_v.1 {
 
             let column_data_id = Uuid::new_v4();
 
             let column_data = ColumnData {
                 id: column_data_id,
-                system_id: dv_transformer_object.system_id,
-                table_oid: dv_transformer_object.table_oid,
-                column_ordinal_position: dv_transformer_object.column_ordinal_position,
-                column_type_name: dv_transformer_object.column_type_name.clone(),
+                system_id: dv_object.system_id,
+                table_oid: dv_object.table_oid,
+                column_ordinal_position: dv_object.column_ordinal_position,
+                column_type_name: dv_object.column_type_name.clone(),
             };
-            let orbit = dv_transformer_object.table_name.clone();
-            // let orbit = dv_transformer_object.business_key_name.clone();
+            let orbit = dv_object.table_name.clone();
+            // let orbit = dv_object.business_key_name.clone();
 
-            if dv_transformer_object.column_category == ColumnCategory::Descriptor {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), column_data, orbit, false);
+            if dv_object.column_category == ColumnCategory::Descriptor {
+                let descriptor = get_descriptor(dv_object.column_name.clone(), column_data, orbit, false);
                 descriptors.push(descriptor);
-            } else if dv_transformer_object.column_category == ColumnCategory::DescriptorSensitive {
-                let descriptor = get_descriptor(dv_transformer_object.column_name.clone(), column_data, orbit, true);
+            } else if dv_object.column_category == ColumnCategory::DescriptorSensitive {
+                let descriptor = get_descriptor(dv_object.column_name.clone(), column_data, orbit, true);
                 descriptors.push(descriptor);
             }
         }
 
         // Build Business Key Part Links
-        for dv_transformer_object in &dv_transformer_objects_v.1 {
+        for dv_object in &dv_objects_v.1 {
 
             let column_data_id = Uuid::new_v4();
 
             let column_data = ColumnData {
                 id: column_data_id,
-                system_id: dv_transformer_object.system_id,
-                table_oid: dv_transformer_object.table_oid,
-                column_ordinal_position: dv_transformer_object.column_ordinal_position,
-                column_type_name: dv_transformer_object.column_type_name.clone(),
+                system_id: dv_object.system_id,
+                table_oid: dv_object.table_oid,
+                column_ordinal_position: dv_object.column_ordinal_position,
+                column_type_name: dv_object.column_type_name.clone(),
             };
 
-            if dv_transformer_object.column_category == ColumnCategory::BusinessKeyPart {
-                let business_key_part_link = get_business_key_part_link(dv_transformer_object.column_name.clone(), column_data);
+            if dv_object.column_category == ColumnCategory::BusinessKeyPart {
+                let business_key_part_link = get_business_key_part_link(dv_object.column_name.clone(), column_data);
                 business_key_part_links.push(business_key_part_link);
             }
         }
@@ -126,9 +127,9 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         // TODO: Handle multiple business keys for link tables. Ensure appropriate error handling!
         let business_key_name: String = {
             let mut business_key_name = String::new();
-            for dv_transformer_object in &dv_transformer_objects_v.1 {
-                if dv_transformer_object.business_key_name.to_lowercase() != "na" {
-                    business_key_name = dv_transformer_object.business_key_name.to_lowercase().clone();
+            for dv_object in &dv_objects_v.1 {
+                if dv_object.business_key_name.to_lowercase() != "na" {
+                    business_key_name = dv_object.business_key_name.to_lowercase().clone();
                 }
             }
             business_key_name
@@ -174,7 +175,7 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
     // Get the current time in GMT
     let now_gmt = Utc::now().naive_utc();
 
-    let mut dv_transformer_schema = DVTransformerSchema {
+    let mut dv_schema = DVSchema {
         id: Uuid::new_v4(),
         dw_schema,
         create_timestamp_gmt: now_gmt,
@@ -182,39 +183,39 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         business_keys,
     };
 
-    // Add Target Columns to dv_transformer_schema links.
+    // Add Target Columns to dv_schema links.
 
-    dv_transformer_schema_add_target_columns(&mut dv_transformer_schema);
+    dv_schema_add_target_columns(&mut dv_schema);
 
-    dv_transformer_schema_push_to_repo(&build_id, &mut dv_transformer_schema);
+    dv_schema_push_to_repo(&build_id, &mut dv_schema);
 
     // ToDo: Remove as this is redundant and for testing purposes.  However, this function will be integral for future data refreshes.
-    match dv_transformer_load_schema_from_build_id(&build_id) {
+    match dv_load_schema_from_build_id(&build_id) {
         Some(schema) => {
-            dv_transformer_schema = schema;
+            dv_schema = schema;
         }
         None => {
             panic!("Repo Error")
         }
     };
 
-    dv_data_load(&dv_transformer_schema);
+    // dv_data_load(&dv_schema);
 }
 
 
 
-fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: &mut DVTransformerSchema) {
+fn dv_schema_push_to_repo(build_id: &String, dv_schema: &mut DVSchema) {
 
     let now_gmt = Utc::now().naive_utc();
 
-    dv_transformer_schema.modified_timestamp_gmt = now_gmt;
+    dv_schema.modified_timestamp_gmt = now_gmt;
 
     let insert_schema_query: &str = r#"
-        INSERT INTO auto_dw.dv_transformer_repo (build_id, schema)
+        INSERT INTO auto_dw.dv_repo (build_id, schema)
         VALUES ($1, $2)
         "#; 
 
-    let repo_json_string = serde_json::to_string(dv_transformer_schema).unwrap();
+    let repo_json_string = serde_json::to_string(dv_schema).unwrap();
 
     // Build Tables using DDL
     Spi::connect( |mut client| {
@@ -231,13 +232,13 @@ fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: 
 
 }
 
-fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut DVTransformerSchema) {
+fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
 
-    for business_key in &mut dv_transformer_schema.business_keys {
+    for business_key in &mut dv_schema.business_keys {
 
         // For Descriptors in Business Keys
         for descriptor in &mut business_key.descriptors {
-            let schema_name = &dv_transformer_schema.dw_schema;
+            let schema_name = &dv_schema.dw_schema;
             let table_name = &{"sat_".to_string() + &descriptor.orbit + {if descriptor.is_sensitive { "_sensitive" } else {""}}};
             let column_name = &descriptor.descriptor_link.alias;
             
@@ -294,7 +295,7 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut DVTransf
 
         // For Business Key Parts in Business Keys
         for business_key_part_link in &mut business_key.business_key_part_links {
-            let schema_name = &dv_transformer_schema.dw_schema;
+            let schema_name = &dv_schema.dw_schema;
             let table_name = &{"hub_".to_string() + &business_key.name};
             let column_name = &(business_key_part_link.alias.clone() + "_bk");
 

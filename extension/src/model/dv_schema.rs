@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DVTransformerSchema {
+pub struct DVSchema {
     #[serde(rename = "ID")]
     pub id: Uuid,
     #[serde(rename = "DW Schema")]

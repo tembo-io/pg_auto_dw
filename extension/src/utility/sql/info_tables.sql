@@ -57,9 +57,9 @@ CREATE TABLE IF NOT EXISTS build_call
 		ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS dv_transformer_repo;
+DROP TABLE IF EXISTS dv_repo;
 
-CREATE TABLE dv_transformer_repo (
+CREATE TABLE dv_repo (
     build_id TEXT,
     insert_time  TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
     schema JSON
