@@ -5,7 +5,15 @@ use chrono::Utc;
 
 use crate::model::queries;
 use crate::utility::guc;
-use crate::model::dv_transformer_schema::{self, BusinessKey};
+use crate::model::dv_transformer_schema::{
+                                            DVTransformerSchema, 
+                                            BusinessKey, 
+                                            BusinessKeyPartLink, 
+                                            Descriptor, 
+                                            DescriptorLink, 
+                                            ColumnData
+                                        };
+use super::dv_loader::dv_transformer_load_schema_from_build_id;
 
 pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
@@ -66,18 +74,18 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
     );
 
     // Build a Vector of BusinessKey's
-    let mut business_keys: Vec<dv_transformer_schema::BusinessKey> = Vec::new();
+    let mut business_keys: Vec<BusinessKey> = Vec::new();
     for dv_transformer_objects_v in dv_transformer_objects_hm {
 
-        let mut descriptors: Vec<dv_transformer_schema::Descriptor> = Vec::new();
-        let mut business_key_part_links: Vec<dv_transformer_schema::BusinessKeyPartLink> = Vec::new();
+        let mut descriptors: Vec<Descriptor> = Vec::new();
+        let mut business_key_part_links: Vec<BusinessKeyPartLink> = Vec::new();
 
         // Build Descriptors
         for dv_transformer_object in &dv_transformer_objects_v.1 {
 
             let column_data_id = Uuid::new_v4();
 
-            let column_data = dv_transformer_schema::ColumnData {
+            let column_data = ColumnData {
                 id: column_data_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
@@ -101,7 +109,7 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
             let column_data_id = Uuid::new_v4();
 
-            let column_data = dv_transformer_schema::ColumnData {
+            let column_data = ColumnData {
                 id: column_data_id,
                 system_id: dv_transformer_object.system_id,
                 table_oid: dv_transformer_object.table_oid,
@@ -127,7 +135,7 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         };
 
         let business_key_id = Uuid::new_v4();
-        let business_key = dv_transformer_schema::BusinessKey {
+        let business_key = BusinessKey {
             id: business_key_id,
             name: business_key_name,
             business_key_part_links,
@@ -166,7 +174,7 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
     // Get the current time in GMT
     let now_gmt = Utc::now().naive_utc();
 
-    let mut dv_transformer_schema = dv_transformer_schema::DVTransformerSchema {
+    let mut dv_transformer_schema = DVTransformerSchema {
         id: Uuid::new_v4(),
         dw_schema,
         create_timestamp_gmt: now_gmt,
@@ -177,67 +185,25 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
     // Add Target Columns to dv_transformer_schema links.
 
     dv_transformer_schema_add_target_columns(&mut dv_transformer_schema);
-    log!("DV Transformer Schema JSON: {:?}", &dv_transformer_schema);
 
     dv_transformer_schema_push_to_repo(&build_id, &mut dv_transformer_schema);
 
+    // ToDo: Remove as this is redundant and for testing purposes.  However, this function will be integral for future data refreshes.
     match dv_transformer_load_schema_from_build_id(&build_id) {
         Some(schema) => {
             dv_transformer_schema = schema;
         }
-        None => {}
+        None => {
+            panic!("Repo Error")
+        }
     };
 
-    log!("DV Transformer Schema Reloaded: {:?}", &dv_transformer_schema);
-    
-}
-
-fn dv_transformer_load_schema_from_build_id(build_id: &String) -> Option<dv_transformer_schema::DVTransformerSchema> {
-    let get_schema_query: &str = r#"
-        SELECT schema
-        FROM auto_dw.dv_transformer_repo
-        WHERE build_id = $1
-    "#;
-
-    // Variable to store the result
-    let mut schema_result: Option<dv_transformer_schema::DVTransformerSchema> = None;
-
-    // Load Schema w/ Build ID
-    Spi::connect( |client| {
-        log!("DV Schema: Pulling from Repo: {}", build_id);
-        let results = client.select(get_schema_query, None, 
-            Some(vec![
-                (PgOid::from(pg_sys::TEXTOID), build_id.into_datum()),
-            ]));
-        log!("DV Schema: Pushed to REPO TABLE");
-
-        match results {
-            Ok(results) => {
-                if let Some(result) = results.into_iter().next() {
-                    let schema_json = result.get_datum_by_ordinal(1).unwrap().value::<pgrx::Json>().unwrap().unwrap();
-                    let deserialized_schema: Result<dv_transformer_schema::DVTransformerSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
-                    match deserialized_schema {
-                        Ok(deserialized_schema) => {
-                            log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
-                            schema_result = Some(deserialized_schema);
-                        },
-                        Err(_) => {
-                            log!("Schema could not deserialized");
-                        },
-                    }
-                }
-            },
-            Err(_) => {
-                log!("Schema could not deserialized");
-            },
-        }
-
-    });
-    return schema_result;
+    dv_data_load(&dv_transformer_schema);
 }
 
 
-fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+
+fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: &mut DVTransformerSchema) {
 
     let now_gmt = Utc::now().naive_utc();
 
@@ -265,7 +231,7 @@ fn dv_transformer_schema_push_to_repo(build_id: &String, dv_transformer_schema: 
 
 }
 
-fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_transformer_schema::DVTransformerSchema) {
+fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut DVTransformerSchema) {
 
     for business_key in &mut dv_transformer_schema.business_keys {
 
@@ -277,7 +243,7 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_trans
             
             let get_column_data = queries::get_column_data(schema_name, table_name, column_name);
 
-            let column_data: Option<dv_transformer_schema::ColumnData> = Spi::connect( |client| {
+            let column_data: Option<ColumnData> = Spi::connect( |client| {
 
                 match client.select(&get_column_data, None, None) {
                     Ok(column_data) => {
@@ -299,7 +265,7 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_trans
                             let column_id = Uuid::new_v4();
 
 
-                            let column_data = dv_transformer_schema::ColumnData {
+                            let column_data = ColumnData {
                                 id: column_id,
                                 system_id,
                                 table_oid,
@@ -334,7 +300,7 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_trans
 
             let get_column_data= queries::get_column_data(schema_name, table_name, column_name);
 
-            let column_data: Option<dv_transformer_schema::ColumnData> = Spi::connect( |client| {
+            let column_data: Option<ColumnData> = Spi::connect( |client| {
 
                 match client.select(&get_column_data, None, None) {
                     Ok(column_data) => {
@@ -356,7 +322,7 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_trans
                             let column_id = Uuid::new_v4();
 
 
-                            let column_data = dv_transformer_schema::ColumnData {
+                            let column_data = ColumnData {
                                 id: column_id,
                                 system_id,
                                 table_oid,
@@ -386,16 +352,16 @@ fn dv_transformer_schema_add_target_columns(dv_transformer_schema: &mut dv_trans
     }
 }
 
-fn get_descriptor(column_name: String, column_data: dv_transformer_schema::ColumnData, orbit: String, is_sensitive: bool) -> dv_transformer_schema::Descriptor {
+fn get_descriptor(column_name: String, column_data: ColumnData, orbit: String, is_sensitive: bool) -> Descriptor {
     let descriptor_link_id = Uuid::new_v4();
-    let descriptor_link = dv_transformer_schema::DescriptorLink {
+    let descriptor_link = DescriptorLink {
         id: descriptor_link_id,
         alias: column_name, // TODO: Give the user an option to change name in the future - modality TBD.
         source_column_entity: Some(column_data),
         target_column_entiy: None,
     };
     let descriptor_id = Uuid::new_v4();
-    let descriptor = dv_transformer_schema::Descriptor {
+    let descriptor = Descriptor {
         id: descriptor_id,
         descriptor_link,
         orbit,
@@ -405,12 +371,12 @@ fn get_descriptor(column_name: String, column_data: dv_transformer_schema::Colum
     descriptor
 }
 
-fn get_business_key_part_link(alias: String, column_data: dv_transformer_schema::ColumnData) -> dv_transformer_schema::BusinessKeyPartLink {
+fn get_business_key_part_link(alias: String, column_data: ColumnData) -> BusinessKeyPartLink {
     let business_key_part_link_id = Uuid::new_v4();
-    let mut sources_column_data: Vec<dv_transformer_schema::ColumnData> = Vec::new(); 
+    let mut sources_column_data: Vec<ColumnData> = Vec::new(); 
     sources_column_data.push(column_data);
 
-    let business_key_link = dv_transformer_schema::BusinessKeyPartLink {
+    let business_key_link = BusinessKeyPartLink {
         id: business_key_part_link_id,
         alias,
         source_column_entities: sources_column_data,
