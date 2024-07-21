@@ -46,6 +46,142 @@ pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
 }
 
 // Refreshes based on dv_schema
-fn dv_data_load(dv_schema: &DVSchema) {
+pub fn dv_data_loader(dv_schema: &DVSchema) {
+
+    // TODO: Create SQL For Hubs
+    let hub_dml = dv_data_loader_hub_dml(dv_schema);
+
+    // TODO: Create SQL For Satellites 
+    let sat_dml = dv_data_loader_sat_dml(dv_schema);
+
+    // Run SQL
+    let dv_dml = hub_dml + &sat_dml;
+    log!("DV DML: {}", &dv_dml);
+    // Build Tables using DDL
+    Spi::connect( |mut client| {
+        // client.select(dv_objects_query, None, None);
+        _ = client.update(&dv_dml, None, None);
+        log!("Data Pushed to DV tables.");
+    }
+    );
 
 }
+
+fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
+
+    let mut hub_insert_dmls = String::new();
+
+    for business_key in &dv_schema.business_keys {
+
+        // Hub Buildout
+        
+        let dw_schema_name = &dv_schema.dw_schema;
+        let busines_key_name = &business_key.name;
+
+        // Business Key Part(s)
+        let mut hub_bk_parts_sql = String::new();
+        for part_link in &business_key.business_key_part_links {
+            let r = format!(r#",
+                            {}_bk"#, part_link.alias);
+            hub_bk_parts_sql.push_str(&r);
+        }
+
+        let mut hub_bk_parts_sql_stg_array = String ::new();
+        for part_link in &business_key.business_key_part_links {
+            // TODO: Need acount for more than once source.  However, Vec data structure isn't ideal - refactor. 
+            let r = format!(r#"stg.{},"#, part_link.source_columns[0].table_name);
+            hub_bk_parts_sql_stg_array.push_str(&r);
+        } 
+
+        // INSERT INTO Header
+        let hub_insert_into_header_part_sql = format!(r#"
+            INSERT INTO {}.hub_{} (
+                hub_{}_hk,
+                load_ts,
+                record_source
+                {}
+            )
+            "#, 
+            dw_schema_name, busines_key_name, busines_key_name, hub_bk_parts_sql);
+
+
+        // Business Key Part(s) Init SQL
+        let mut hub_bk_neg_1_init_parts_sql = String::new();
+        let mut hub_bk_neg_2_init_parts_sql = String::new();
+        for part_link in &business_key.business_key_part_links {
+            let neg_1: String = format!(r#",
+                '-1'::TEXT AS {}_bk"#, part_link.alias);
+            hub_bk_neg_1_init_parts_sql.push_str(&neg_1);
+            let neg_2: String = format!(r#",
+                '-2'::TEXT AS {}_bk"#, part_link.alias);
+            hub_bk_neg_2_init_parts_sql.push_str(&neg_2);
+        }
+                
+        let hub_insert_into_init_part_sql = format!(r#"
+            WITH initialized AS (
+            SELECT
+            CASE
+                WHEN COUNT(*) > 0 THEN TRUE
+                ELSE FALSE
+            END is_initialized
+            FROM {}.hub_{}
+            )
+            SELECT
+                ENCODE(PUBLIC.DIGEST(ARRAY_TO_STRING(ARRAY[-1], ',')::TEXT, 'sha256'), 'hex') AS hub_{}_hk,
+                '0001-01-01'::TIMESTAMP WITHOUT TIME ZONE AS load_ts, 
+                'SYSTEM'::TEXT AS record_source
+                {}
+                FROM initialized WHERE NOT initialized.is_initialized
+            UNION
+            SELECT
+                ENCODE(PUBLIC.DIGEST(ARRAY_TO_STRING(ARRAY[-2], ',')::TEXT, 'sha256'), 'hex') AS hub_{}_hk,
+                '0001-01-01'::TIMESTAMP WITHOUT TIME ZONE AS load_ts,
+                'SYSTEM'::TEXT AS record_source
+                {}
+                FROM initialized WHERE NOT initialized.is_initialized
+            ;
+            "#, dw_schema_name, busines_key_name, 
+            busines_key_name, hub_bk_neg_1_init_parts_sql, 
+            busines_key_name, hub_bk_neg_2_init_parts_sql);
+
+        let hub_insert_init = hub_insert_into_header_part_sql + &hub_insert_into_init_part_sql;
+
+        hub_insert_dmls.push_str(&hub_insert_init);
+    }
+    hub_insert_dmls
+}
+
+fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
+    String::from("--DML for Sats")
+}
+
+
+// INSERT INTO public.hub_seller (
+//     hub_seller_hk,
+//     load_ts,
+//     record_source,
+//     seller_id_bk
+// )
+// WITH
+// stg_data AS (
+// SELECT
+//     ENCODE(
+//         public.DIGEST(
+//             ARRAY_TO_STRING(
+//                 ARRAY[stg.seller_id], ','), 'sha256'), 'hex') AS hub_seller_hk,
+//     (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP(6) AS load_ts,
+//     'STG_OLIST_ECOM' AS record_source,
+//     stg.seller_id::TEXT AS seller_id_bk
+// FROM public.seller AS stg
+// ),
+// new_stg_data AS (
+// SELECT stg_data.* FROM stg_data
+// LEFT JOIN public.hub_seller ON stg_data.hub_seller_hk = hub_seller.hub_seller_hk
+// WHERE hub_seller.hub_seller_hk IS NULL
+// )
+// SELECT
+// hub_seller_hk,
+// load_ts,
+// record_source,
+// seller_id_bk
+// FROM new_stg_data;

@@ -35,9 +35,9 @@ pub struct BusinessKeyPartLink {
     #[serde(rename = "Alias")]
     pub alias: String,
     #[serde(rename = "Source Column Data")]
-    pub source_column_entities: Vec<ColumnData>,
+    pub source_columns: Vec<ColumnData>,
     #[serde(rename = "Target Column Data")]
-    pub target_column_id: Option<ColumnData>,
+    pub target_column: Option<ColumnData>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -59,9 +59,9 @@ pub struct DescriptorLink {
     #[serde(rename = "Alias")]
     pub alias: String,
     #[serde(rename = "Source Column Data")]
-    pub source_column_entity: Option<ColumnData>,
+    pub source_column: Option<ColumnData>,
     #[serde(rename = "Target Column Data")]
-    pub target_column_entiy: Option<ColumnData>,
+    pub target_column: Option<ColumnData>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,8 +70,14 @@ pub struct ColumnData {
     pub id: Uuid,
     #[serde(rename = "System ID")]
     pub system_id: i64,
+    #[serde(rename = "Schema Name")]
+    pub schema_name: String,
     #[serde(rename = "Table OID")]
     pub table_oid: u32,
+    #[serde(rename = "Table Name")]
+    pub table_name: String,
+    #[serde(rename = "Column Name")]
+    pub column_name: String,
     #[serde(rename = "Column Ordinal Position")]
     pub column_ordinal_position: i16,
     #[serde(rename = "Column Type")]

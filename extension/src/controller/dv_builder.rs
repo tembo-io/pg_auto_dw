@@ -13,8 +13,8 @@ use crate::model::dv_schema::{
                                 DescriptorLink, 
                                 ColumnData
                             };
-                            
-use super::dv_loader::dv_load_schema_from_build_id;
+
+use super::dv_loader::*;
 
 pub fn build_dv(build_id: &String, dv_objects_query: &str) {
 
@@ -89,7 +89,10 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
             let column_data = ColumnData {
                 id: column_data_id,
                 system_id: dv_object.system_id,
+                schema_name: dv_object.schema_name.clone(),
                 table_oid: dv_object.table_oid,
+                table_name: dv_object.table_name.clone(),
+                column_name: dv_object.column_name.clone(),
                 column_ordinal_position: dv_object.column_ordinal_position,
                 column_type_name: dv_object.column_type_name.clone(),
             };
@@ -113,7 +116,10 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
             let column_data = ColumnData {
                 id: column_data_id,
                 system_id: dv_object.system_id,
+                schema_name: dv_object.schema_name.clone(),
                 table_oid: dv_object.table_oid,
+                table_name: dv_object.table_name.clone(),
+                column_name: dv_object.column_name.clone(),
                 column_ordinal_position: dv_object.column_ordinal_position,
                 column_type_name: dv_object.column_type_name.clone(),
             };
@@ -199,7 +205,8 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         }
     };
 
-    // dv_data_load(&dv_schema);
+    // dv_loader::dv_data_load(&dv_schema);
+    dv_data_loader(&dv_schema);
 }
 
 
@@ -252,16 +259,16 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                         if let Some(column_data_record) = column_data.into_iter().next() {
                             let system_id =  column_data_record.get_datum_by_ordinal(1).unwrap().value::<i64>().unwrap().unwrap();
                             let _schema_oid =  column_data_record.get_datum_by_ordinal(2).unwrap().value::<u32>().unwrap().unwrap();
-                            let _schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
-                            let _table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                            let schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
+                            let table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
                             let table_oid =  column_data_record.get_datum_by_ordinal(5).unwrap().value::<u32>().unwrap().unwrap();
-                            let _column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                            let column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
                             let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
                             let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
 
 
                             log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                                system_id, _schema_oid, _schema_name, _table_name, table_oid, _column_name, column_ordinal_position, column_type_name);
+                                system_id, _schema_oid, schema_name, table_name, table_oid, column_name, column_ordinal_position, column_type_name);
 
                             let column_id = Uuid::new_v4();
 
@@ -269,7 +276,10 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                             let column_data = ColumnData {
                                 id: column_id,
                                 system_id,
+                                schema_name,
                                 table_oid,
+                                table_name,
+                                column_name,
                                 column_ordinal_position,
                                 column_type_name,
                             };
@@ -290,7 +300,7 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                 }
             });
 
-            descriptor.descriptor_link.target_column_entiy = column_data;
+            descriptor.descriptor_link.target_column = column_data;
         }
 
         // For Business Key Parts in Business Keys
@@ -309,16 +319,16 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                         if let Some(column_data_record) = column_data.into_iter().next() {
                             let system_id =  column_data_record.get_datum_by_ordinal(1).unwrap().value::<i64>().unwrap().unwrap();
                             let _schema_oid =  column_data_record.get_datum_by_ordinal(2).unwrap().value::<u32>().unwrap().unwrap();
-                            let _schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
-                            let _table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
+                            let schema_name =  column_data_record.get_datum_by_ordinal(3).unwrap().value::<String>().unwrap().unwrap();
+                            let table_name =  column_data_record.get_datum_by_ordinal(4).unwrap().value::<String>().unwrap().unwrap();
                             let table_oid =  column_data_record.get_datum_by_ordinal(5).unwrap().value::<u32>().unwrap().unwrap();
-                            let _column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
+                            let column_name =  column_data_record.get_datum_by_ordinal(6).unwrap().value::<String>().unwrap().unwrap();
                             let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
                             let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
 
 
                             log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                                system_id, _schema_oid, _schema_name, _table_name, table_oid, _column_name, column_ordinal_position, column_type_name);
+                                system_id, _schema_oid, schema_name, table_name, table_oid, column_name, column_ordinal_position, column_type_name);
 
                             let column_id = Uuid::new_v4();
 
@@ -326,7 +336,10 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                             let column_data = ColumnData {
                                 id: column_id,
                                 system_id,
+                                schema_name,
                                 table_oid,
+                                table_name,
+                                column_name,
                                 column_ordinal_position,
                                 column_type_name,
                             };
@@ -347,7 +360,7 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                 }
             });
 
-            business_key_part_link.target_column_id = column_data;
+            business_key_part_link.target_column = column_data;
         }
         
     }
@@ -358,8 +371,8 @@ fn get_descriptor(column_name: String, column_data: ColumnData, orbit: String, i
     let descriptor_link = DescriptorLink {
         id: descriptor_link_id,
         alias: column_name, // TODO: Give the user an option to change name in the future - modality TBD.
-        source_column_entity: Some(column_data),
-        target_column_entiy: None,
+        source_column: Some(column_data),
+        target_column: None,
     };
     let descriptor_id = Uuid::new_v4();
     let descriptor = Descriptor {
@@ -380,8 +393,8 @@ fn get_business_key_part_link(alias: String, column_data: ColumnData) -> Busines
     let business_key_link = BusinessKeyPartLink {
         id: business_key_part_link_id,
         alias,
-        source_column_entities: sources_column_data,
-        target_column_id: None,
+        source_columns: sources_column_data,
+        target_column: None,
     };
 
     business_key_link
@@ -429,7 +442,7 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
 
         let satellite_sql_key = descriptor.orbit.clone() + &sensitive_string;
         let desc_column_name = &descriptor.descriptor_link.alias;
-        let desc_column_type = &descriptor.descriptor_link.source_column_entity.as_ref().unwrap().column_type_name;
+        let desc_column_type = &descriptor.descriptor_link.source_column.as_ref().unwrap().column_type_name;
         let sat_descriptor_sql_part: String = format!(",\n    {} {}", desc_column_name, desc_column_type);
 
         if let Some(existing_sat_sql) = satellite_sqls.get_mut(&satellite_sql_key) {
