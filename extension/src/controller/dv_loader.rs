@@ -86,13 +86,6 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
             hub_bk_parts_sql.push_str(&r);
         }
 
-        let mut hub_bk_parts_sql_stg_array = String ::new();
-        for part_link in &business_key.business_key_part_links {
-            // TODO: Need acount for more than once source.  However, Vec data structure isn't ideal - refactor. 
-            let r = format!(r#"stg.{},"#, part_link.source_columns[0].table_name);
-            hub_bk_parts_sql_stg_array.push_str(&r);
-        } 
-
         // INSERT INTO Header
         let hub_insert_into_header_part_sql = format!(r#"
             INSERT INTO {}.hub_{} (
@@ -144,10 +137,77 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
             busines_key_name, hub_bk_neg_1_init_parts_sql, 
             busines_key_name, hub_bk_neg_2_init_parts_sql);
 
-        let hub_insert_init = hub_insert_into_header_part_sql + &hub_insert_into_init_part_sql;
-
+        let hub_insert_init = hub_insert_into_header_part_sql.clone() + &hub_insert_into_init_part_sql;
         hub_insert_dmls.push_str(&hub_insert_init);
+
+        // Insert Main
+
+        // Arrary Parts
+        let mut hub_bk_parts_sql_stg_array = String ::new();
+        for part_link in &business_key.business_key_part_links {
+            // TODO: Need acount for more than once source.  However, Vec data structure isn't ideal - refactor. 
+            let e = format!(r#"stg.{},"#, part_link.source_columns[0].column_name);
+            hub_bk_parts_sql_stg_array.push_str(&e);
+        } 
+        hub_bk_parts_sql_stg_array.pop(); // Removing the last ","
+
+        // Source Schema
+        // TODO: Schema Needs to be pushed up to the link.
+        let mut source_schema = String::new();
+        // TODO: Table Needs to be pushed up to the link.
+        let mut source_table = String::new();
+
+        // Business Key Part(s)
+        let mut hub_bk_parts_stg_names = String::new();
+        for part_link in &business_key.business_key_part_links {
+            let source_column_name = &part_link.source_columns[0].column_name;
+            let e = format!(r#",
+                            stg.{}::TEXT AS {}_bk"#, source_column_name, source_column_name);
+            hub_bk_parts_stg_names.push_str(&e);
+            source_schema = part_link.source_columns[0].schema_name.clone();
+            source_table = part_link.source_columns[0].table_name.clone();
+        }
+
+        let hub_insert_into_main_part_sql = format!(r#"
+            WITH
+            stg_data AS (
+            SELECT
+                ENCODE(
+                    public.DIGEST(
+                        ARRAY_TO_STRING(
+                            ARRAY[{}], ','), 'sha256'), 'hex') AS hub_{}_hk,
+                (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP(6) AS load_ts,
+                '{}' AS record_source{}
+            FROM {}.{} AS stg
+            ),
+            new_stg_data AS (
+            SELECT stg_data.* FROM stg_data
+            LEFT JOIN {}.hub_{} ON stg_data.hub_{}_hk = hub_{}.hub_{}_hk
+            WHERE hub_{}.hub_{}_hk IS NULL
+            )
+            SELECT
+            hub_{}_hk,
+            load_ts,
+            record_source{}
+            FROM new_stg_data
+            ;
+            "#, 
+            hub_bk_parts_sql_stg_array, busines_key_name,
+            source_schema, hub_bk_parts_stg_names,
+            source_schema, source_table,
+            dw_schema_name, busines_key_name, busines_key_name, busines_key_name, busines_key_name,
+            busines_key_name, busines_key_name,
+            busines_key_name,
+            hub_bk_parts_sql
+        );
+
+        log!("MAIN HUB INSERT SQL: 
+            {}", hub_insert_into_main_part_sql);
+
+        let hub_insert_main = hub_insert_into_header_part_sql + &hub_insert_into_main_part_sql;
+        hub_insert_dmls.push_str(&hub_insert_main);
     }
+
     hub_insert_dmls
 }
 
