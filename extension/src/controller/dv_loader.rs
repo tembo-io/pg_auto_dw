@@ -75,7 +75,6 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
     for business_key in &dv_schema.business_keys {
 
         // Hub Buildout
-        
         let dw_schema_name = &dv_schema.dw_schema;
         let busines_key_name = &business_key.name;
 
@@ -147,7 +146,7 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
         let mut hub_bk_parts_sql_stg_array = String ::new();
         for part_link in &business_key.business_key_part_links {
             // TODO: Need acount for more than once source.  However, Vec data structure isn't ideal - refactor. 
-            let e = format!(r#"stg.{},"#, part_link.source_columns[0].column_name);
+            let e = format!(r#"stg.{}::TEXT,"#, part_link.source_columns[0].column_name);
             hub_bk_parts_sql_stg_array.push_str(&e);
         } 
         hub_bk_parts_sql_stg_array.pop(); // Removing the last ","
@@ -219,8 +218,18 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
 
     for business_key in &dv_schema.business_keys {
 
+        // Arrary Parts
+        let mut hub_bk_parts_sql_stg_array = String ::new();
+        for part_link in &business_key.business_key_part_links {
+            // TODO: Need acount for more than once source.  However, Vec data structure isn't ideal - refactor. 
+            let e = format!(r#"stg.{}::TEXT,"#, part_link.source_columns[0].column_name);
+            hub_bk_parts_sql_stg_array.push_str(&e);
+        } 
+        hub_bk_parts_sql_stg_array.pop(); // Removing the last ","
+
           // Sat Buildout
-        let mut sat_insert_into_header_part_sql: HashMap<String, String> = HashMap::new();
+        let mut sat_insert_sql_header_parts: HashMap<String, String> = HashMap::new();
+        let mut descriptors_for_sats: HashMap<String, Vec<&Descriptor>> = HashMap::new();
 
         for descriptor in &business_key.descriptors {
 
@@ -233,15 +242,21 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
             };
 
             let satellite_sql_key = descriptor.orbit.clone() + &sensitive_string;
+
+            descriptors_for_sats
+                .entry(satellite_sql_key.clone())
+                .or_insert_with(Vec::new)
+                .push(&descriptor);
+
             let desc_column_name = &descriptor.descriptor_link.alias;
 
             // SAT INSERT Header 
             let sat_descriptor_sql_part: String = format!(",\n    {}", desc_column_name);
-            if let Some(existing_sat_sql) = sat_insert_into_header_part_sql.get_mut(&satellite_sql_key) {
-                if let Some(pos) = existing_sat_sql.find(");") {
+            if let Some(existing_sat_sql) = sat_insert_sql_header_parts.get_mut(&satellite_sql_key) {
+                if let Some(pos) = existing_sat_sql.find(")") {
                     existing_sat_sql.insert_str(pos, &sat_descriptor_sql_part);
                 } else {
-                    println!("The substring \");\" was not found in the original string.");
+                    println!("The substring \")\" was not found in the original string.");
                 }
             } else {
                 let begin_sat_sql = 
@@ -250,62 +265,124 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
                                 hub_{}_hk,
                                 load_ts,
                                 record_source,
-                                sat_{}_hd{});
+                                sat_{}_hd{})
                             "#, 
-                            dw_schema, satellite_sql_key, 
+                            dw_schema, &satellite_sql_key, 
                             business_key.name, 
-                            satellite_sql_key, sat_descriptor_sql_part);
+                            &satellite_sql_key, sat_descriptor_sql_part);
 
-                sat_insert_into_header_part_sql.insert(satellite_sql_key, begin_sat_sql);
-                
+                sat_insert_sql_header_parts.insert(satellite_sql_key.clone(), begin_sat_sql);
             }
         }
 
-    }
+        log!("Hub Array Part {}", hub_bk_parts_sql_stg_array);
 
+        for sat_insert_sql_header_part in &sat_insert_sql_header_parts {
+            log!("SAT INSERT SQL HEADER {} :: {}", sat_insert_sql_header_part.0, sat_insert_sql_header_part.1);
+        }
+
+        // Array SQL
+        let mut sats_source_sql_array: HashMap<String, String> = HashMap::new();
+        for (key, descriptors) in descriptors_for_sats.clone() {
+            let array_part_str = sats_source_sql_array.entry(key.clone()).or_insert_with(String::new);
+        
+            for descriptor in descriptors {
+                if let Some(column) = descriptor.descriptor_link.source_column.as_ref() {
+                    let array_part = if array_part_str.is_empty() {
+                        format!("stg.{}::TEXT", column.column_name)
+                    } else {
+                        format!(", stg.{}::TEXT", column.column_name)
+                    };
+                    array_part_str.push_str(&array_part);
+                }
+            }
+        }
+
+        for sat_source_sql_array in &sats_source_sql_array {
+            log!("Sat Source SQL Key: {} ARRAY: {}", sat_source_sql_array.0, sat_source_sql_array.1);
+        }
+
+        // Column SQL
+        let mut sats_source_sql_cols: HashMap<String, String> = HashMap::new();
+        for (key, descriptors) in descriptors_for_sats.clone() {
+            let col_part_str = sats_source_sql_cols.entry(key.clone()).or_insert_with(String::new);
+        
+            for descriptor in descriptors {
+                if let Some(column) = descriptor.descriptor_link.source_column.as_ref() {
+                    let col_part = format!(r#",
+                                                    {}"#, 
+                                                    column.column_name);
+                    col_part_str.push_str(&col_part);
+                }
+            }
+        }
+
+        for sat_source_sql_cols in &sats_source_sql_cols {
+            log!("Sat Source SQL Key: {} Cols: {}", sat_source_sql_cols.0, sat_source_sql_cols.1);
+        }
+
+        // Main Insert
+
+        for (key, insert_header) in sat_insert_sql_header_parts {
+            
+            let sat_source_sql_array = sats_source_sql_array.get(&key).map(|v| v.as_str()).unwrap_or("NA");
+            let sat_source_sql_cols = sats_source_sql_cols.get(&key).map(|v| v.as_str()).unwrap_or("NA");
+
+            // TODO: Change data structure to support multiple source schemas.
+            let source_schema_name = descriptors_for_sats
+                .get(&key)
+                .and_then(|v| v.get(0))  // Safely get the first element
+                .and_then(|descriptor| descriptor.descriptor_link.source_column.as_ref())  // Safely access target_column
+                .map(|source_column| source_column.schema_name.clone())  // Safely get schema_name and clone it
+                .unwrap_or_default();  // Provide a default value in case of None
+            
+            let source_table_name = descriptors_for_sats
+                .get(&key)
+                .and_then(|v| v.get(0))  // Safely get the first element
+                .and_then(|descriptor| descriptor.descriptor_link.source_column.as_ref())  // Safely access target_column
+                .map(|source_column| source_column.table_name.clone())  // Safely get schema_name and clone it
+                .unwrap_or_default();  // Provide a default value in case of None
+
+            let business_key_name = &business_key.name;
+
+            let insert_sql =  format!(r#"
+                -- SAT INSERT SQL
+                {insert_header}
+                WITH stg AS (
+                SELECT 
+                    *,
+                    ENCODE(
+                        {source_schema_name}.DIGEST(
+                            ARRAY_TO_STRING(
+                                ARRAY[{hub_bk_parts_sql_stg_array}], ','), 'sha256'), 'hex') AS hub_{business_key_name}_hk,
+                    ENCODE(
+                            {source_schema_name}.DIGEST(
+                                ARRAY_TO_STRING(
+                                    ARRAY[{sat_source_sql_array}], ','), 'sha256'), 'hex') AS sat_{key}_hd
+                    FROM {source_schema_name}.{source_table_name} AS stg
+                ),
+                new_stg_data AS (  
+                SELECT stg.*
+                    FROM stg
+                LEFT JOIN {dw_schema}.sat_{key} ON 
+                    stg.hub_{business_key_name}_hk = sat_{key}.hub_{business_key_name}_hk AND
+                    stg.sat_{key}_hd = sat_{key}.sat_{key}_hd
+                WHERE sat_{key}.hub_{business_key_name}_hk IS NULL
+                )
+                SELECT   
+                hub_{business_key_name}_hk,
+                (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP WITHOUT TIME ZONE AS load_ts ,
+                '{source_schema_name}' AS record_source ,
+                sat_{key}_hd
+                {sat_source_sql_cols}
+                FROM new_stg_data
+                ; 
+                "#);
+
+            log!("{insert_sql}");
+            sat_insert_dmls.push_str(&insert_sql);
+        }
+    }
 
     sat_insert_dmls
 }
-
-
-// INSERT INTO public.sat_seller (
-//     hub_seller_hk,
-//     load_ts,
-//     record_source,
-//     sat_seller_hd,
-//     city,
-//     state,
-//     zip_5
-// )
-// WITH stg AS (
-//     SELECT 
-//         *,
-//         ENCODE(
-//             public.DIGEST(
-//                 ARRAY_TO_STRING(
-//                     ARRAY[stg.seller_id], ','), 'sha256'), 'hex') AS hub_seller_hk,
-//         ENCODE(
-//             public.DIGEST(
-//                 ARRAY_TO_STRING(
-//                     ARRAY[stg.city, stg.state, stg.zip_5], ','), 'sha256'), 'hex') AS sat_seller_hd
-//     FROM public.seller AS stg
-// ),
-// new_stg_data AS (  
-// SELECT stg.*
-//     FROM stg
-// LEFT JOIN public.sat_seller ON 
-//     stg.hub_seller_hk = sat_seller.hub_seller_hk AND
-//     stg.sat_seller_hd = sat_seller.sat_seller_hd
-// WHERE sat_seller.hub_seller_hk IS NULL
-// )
-// SELECT   
-// hub_seller_hk,
-// (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP WITHOUT TIME ZONE AS load_ts ,
-// 'PUBLIC SCHEMA' AS record_source ,
-// sat_seller_hd,
-// city,
-// state,
-// zip_5
-// FROM new_stg_data
-// ; 
-// "#;
