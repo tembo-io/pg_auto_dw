@@ -427,7 +427,6 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
         {}"#, hub_sql));
 
     // Sat Buildout
-
     let mut satellite_sqls: HashMap<String, String> = HashMap::new(); 
 
     for descriptor in &business_key.descriptors {
@@ -459,7 +458,7 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
                         load_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
                         record_source VARCHAR NOT NULL,
                         sat_{}_hd VARCHAR NOT NULL{});
-                "#, dw_schema, satellite_sql_key, business_key.name, descriptor.orbit, sat_descriptor_sql_part);
+                "#, dw_schema, satellite_sql_key, business_key.name, satellite_sql_key, sat_descriptor_sql_part);
             satellite_sqls.insert(satellite_sql_key, begin_sat_sql);
         }
 

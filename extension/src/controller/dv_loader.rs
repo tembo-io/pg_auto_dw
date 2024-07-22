@@ -1,4 +1,5 @@
 use pgrx::prelude::*;
+use std::collections::HashMap;
 use crate::model::dv_schema::*;
 
 pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
@@ -212,36 +213,99 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
 }
 
 fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
-    String::from("--DML for Sats")
+
+    let mut sat_insert_dmls = String::new();
+    let dw_schema = dv_schema.dw_schema.clone();
+
+    for business_key in &dv_schema.business_keys {
+
+          // Sat Buildout
+        let mut sat_insert_into_header_part_sql: HashMap<String, String> = HashMap::new();
+
+        for descriptor in &business_key.descriptors {
+
+            let sensitive_string = {
+                if descriptor.is_sensitive == true {
+                    "_sensitive".to_string()
+                } else {
+                    "".to_string()
+                }
+            };
+
+            let satellite_sql_key = descriptor.orbit.clone() + &sensitive_string;
+            let desc_column_name = &descriptor.descriptor_link.alias;
+
+            // SAT INSERT Header 
+            let sat_descriptor_sql_part: String = format!(",\n    {}", desc_column_name);
+            if let Some(existing_sat_sql) = sat_insert_into_header_part_sql.get_mut(&satellite_sql_key) {
+                if let Some(pos) = existing_sat_sql.find(");") {
+                    existing_sat_sql.insert_str(pos, &sat_descriptor_sql_part);
+                } else {
+                    println!("The substring \");\" was not found in the original string.");
+                }
+            } else {
+                let begin_sat_sql = 
+                    format!(r#"
+                            INSERT INTO {}.sat_{} (
+                                hub_{}_hk,
+                                load_ts,
+                                record_source,
+                                sat_{}_hd{});
+                            "#, 
+                            dw_schema, satellite_sql_key, 
+                            business_key.name, 
+                            satellite_sql_key, sat_descriptor_sql_part);
+
+                sat_insert_into_header_part_sql.insert(satellite_sql_key, begin_sat_sql);
+                
+            }
+        }
+
+    }
+
+
+    sat_insert_dmls
 }
 
 
-// INSERT INTO public.hub_seller (
+// INSERT INTO public.sat_seller (
 //     hub_seller_hk,
 //     load_ts,
 //     record_source,
-//     seller_id_bk
+//     sat_seller_hd,
+//     city,
+//     state,
+//     zip_5
 // )
-// WITH
-// stg_data AS (
-// SELECT
-//     ENCODE(
-//         public.DIGEST(
-//             ARRAY_TO_STRING(
-//                 ARRAY[stg.seller_id], ','), 'sha256'), 'hex') AS hub_seller_hk,
-//     (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP(6) AS load_ts,
-//     'STG_OLIST_ECOM' AS record_source,
-//     stg.seller_id::TEXT AS seller_id_bk
-// FROM public.seller AS stg
+// WITH stg AS (
+//     SELECT 
+//         *,
+//         ENCODE(
+//             public.DIGEST(
+//                 ARRAY_TO_STRING(
+//                     ARRAY[stg.seller_id], ','), 'sha256'), 'hex') AS hub_seller_hk,
+//         ENCODE(
+//             public.DIGEST(
+//                 ARRAY_TO_STRING(
+//                     ARRAY[stg.city, stg.state, stg.zip_5], ','), 'sha256'), 'hex') AS sat_seller_hd
+//     FROM public.seller AS stg
 // ),
-// new_stg_data AS (
-// SELECT stg_data.* FROM stg_data
-// LEFT JOIN public.hub_seller ON stg_data.hub_seller_hk = hub_seller.hub_seller_hk
-// WHERE hub_seller.hub_seller_hk IS NULL
+// new_stg_data AS (  
+// SELECT stg.*
+//     FROM stg
+// LEFT JOIN public.sat_seller ON 
+//     stg.hub_seller_hk = sat_seller.hub_seller_hk AND
+//     stg.sat_seller_hd = sat_seller.sat_seller_hd
+// WHERE sat_seller.hub_seller_hk IS NULL
 // )
-// SELECT
+// SELECT   
 // hub_seller_hk,
-// load_ts,
-// record_source,
-// seller_id_bk
-// FROM new_stg_data;
+// (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP WITHOUT TIME ZONE AS load_ts ,
+// 'PUBLIC SCHEMA' AS record_source ,
+// sat_seller_hd,
+// city,
+// state,
+// zip_5
+// FROM new_stg_data
+// ; 
+// "#;
