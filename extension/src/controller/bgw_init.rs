@@ -6,8 +6,6 @@ use crate::utility::guc;
 #[pg_guard]
 pub extern "C" fn _PG_init() {
 
-    log!("Setting Database Name");
-
     guc::init_guc();
 
     let database_name_o = guc::get_guc(guc::PgAutoDWGuc::DatabaseName);
@@ -28,7 +26,7 @@ pub extern "C" fn _PG_init() {
             .load();
         }
         None => {
-            log!("Database Name for this extensaion has not been set.");
+            log!("Database Name for this extension has not been set.");
         }
     }
 }

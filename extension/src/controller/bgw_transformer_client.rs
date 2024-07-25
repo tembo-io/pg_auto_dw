@@ -53,7 +53,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
             // Process Each Prompt
             for source_table_prompt in v_source_table_prompts {
                 
-                let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Detailsto pretty string");
+                let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Details to pretty string");
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
                 let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_str(&table_column_link_json_str).ok();
@@ -66,7 +66,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     // Get Generation
                     generation_json_o = match ollama_client::send_request(table_details_json_str.as_str()).await {
                         Ok(response_json) => {
-                            log!("Ollama client request successful. {:?}", response_json);
+                            // log!("Transformer client request successful. {:?}", response_json);
                             Some(response_json)
                         },
                         Err(e) => {
@@ -115,7 +115,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 BackgroundWorker::transaction(|| {
                     Spi::connect(|mut client| {
                         _ = client.update(insert_sql.as_str(), None, None);
-                        log!("TABLE TRANSFORMER_RESPONSES UPDATTED.");
                     })
                 });
             }

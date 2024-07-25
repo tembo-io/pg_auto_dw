@@ -14,12 +14,10 @@ pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
 
     // Load Schema w/ Build ID
     Spi::connect( |client| {
-        log!("DV Schema: Pulling from Repo: {}", build_id);
         let results = client.select(get_schema_query, None, 
             Some(vec![
                 (PgOid::from(pg_sys::TEXTOID), build_id.into_datum()),
             ]));
-        log!("DV Schema: Pushed to REPO TABLE");
 
         match results {
             Ok(results) => {
@@ -28,11 +26,11 @@ pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
                     let deserialized_schema: Result<DVSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
                     match deserialized_schema {
                         Ok(deserialized_schema) => {
-                            log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
+                            // log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
                             schema_result = Some(deserialized_schema);
                         },
                         Err(_) => {
-                            log!("Schema could not deserialized");
+                            log!("Schema could not be deserialized");
                         },
                     }
                 }
@@ -49,15 +47,15 @@ pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
 // Refreshes based on dv_schema
 pub fn dv_data_loader(dv_schema: &DVSchema) {
 
-    // TODO: Create SQL For Hubs
+    // Create SQL For Hubs
     let hub_dml = dv_data_loader_hub_dml(dv_schema);
 
-    // TODO: Create SQL For Satellites 
+    // Create SQL For Satellites 
     let sat_dml = dv_data_loader_sat_dml(dv_schema);
 
     // Run SQL
     let dv_dml = hub_dml + &sat_dml;
-    log!("DV DML: {}", &dv_dml);
+    // log!("DV DML: {}", &dv_dml);
     // Build Tables using DDL
     Spi::connect( |mut client| {
         // client.select(dv_objects_query, None, None);
@@ -152,9 +150,7 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
         hub_bk_parts_sql_stg_array.pop(); // Removing the last ","
 
         // Source Schema
-        // TODO: Schema Needs to be pushed up to the link.
         let mut source_schema = String::new();
-        // TODO: Table Needs to be pushed up to the link.
         let mut source_table = String::new();
 
         // Business Key Part(s)
@@ -200,9 +196,6 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
             busines_key_name,
             hub_bk_parts_sql
         );
-
-        log!("MAIN HUB INSERT SQL: 
-            {}", hub_insert_into_main_part_sql);
 
         let hub_insert_main = hub_insert_into_header_part_sql + &hub_insert_into_main_part_sql;
         hub_insert_dmls.push_str(&hub_insert_main);
@@ -275,12 +268,6 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
             }
         }
 
-        log!("Hub Array Part {}", hub_bk_parts_sql_stg_array);
-
-        for sat_insert_sql_header_part in &sat_insert_sql_header_parts {
-            log!("SAT INSERT SQL HEADER {} :: {}", sat_insert_sql_header_part.0, sat_insert_sql_header_part.1);
-        }
-
         // Array SQL
         let mut sats_source_sql_array: HashMap<String, String> = HashMap::new();
         for (key, descriptors) in descriptors_for_sats.clone() {
@@ -298,10 +285,6 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
             }
         }
 
-        for sat_source_sql_array in &sats_source_sql_array {
-            log!("Sat Source SQL Key: {} ARRAY: {}", sat_source_sql_array.0, sat_source_sql_array.1);
-        }
-
         // Column SQL
         let mut sats_source_sql_cols: HashMap<String, String> = HashMap::new();
         for (key, descriptors) in descriptors_for_sats.clone() {
@@ -315,10 +298,6 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
                     col_part_str.push_str(&col_part);
                 }
             }
-        }
-
-        for sat_source_sql_cols in &sats_source_sql_cols {
-            log!("Sat Source SQL Key: {} Cols: {}", sat_source_sql_cols.0, sat_source_sql_cols.1);
         }
 
         // Main Insert
@@ -379,7 +358,6 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
                 ; 
                 "#);
 
-            log!("{insert_sql}");
             sat_insert_dmls.push_str(&insert_sql);
         }
     }

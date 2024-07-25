@@ -9,19 +9,6 @@ pgrx::pg_module_magic!();
 
 use model::queries;
 
-#[pg_extern]
-fn hello_pg_auto_dw() -> &'static str {
-    "Hello, pg_auto_dw"
-}
-
-// #[pg_extern(name="go")]
-// fn go(flag: &str, status: &str) -> &'static str {
-//     let _ = flag;
-//     let _ = status;
-//     _ = Spi::run(queries::SELLER_DV);
-//     queries::GO_OUTPUT
-// }
-
 #[pg_extern(name="go")]
 fn go_default() -> String {
     let build_id = Uuid::new_v4();
@@ -31,43 +18,12 @@ fn go_default() -> String {
     let build_flag = "Build";
     let build_status = "RTD";
     let status = "Ready to Deploy";
-
     let query_insert = &queries::insert_into_build_call(&build_id, &build_flag, &build_status, &status);
-    log!("Executing Query insert_into_build_call: {}", query_insert);
     _ = Spi::run(query_insert);
-
     let query_build_pull = &queries::build_object_pull(&build_id);
-    log!("Executing Query build_object_pull: {}", query_build_pull);
     controller::dv_builder::build_dv(&build_id, query_build_pull);
 
     message
-}
-
-#[pg_extern]
-fn source_push() -> &'static str {
-    _ = Spi::run(
-            queries::source_object_dw(
-                "public", 
-                ".*", 
-                ".*", 
-                "a^", 
-                "a^", 
-                "a^"
-            ).as_str());
-    "Pushed"
-}
-
-#[pg_extern]
-fn source_update() -> &'static str {
-    _ = Spi::run(queries::source_object_dw( 
-        "a^", 
-        "a^", 
-        "a^", 
-        "a^", 
-        "a^", 
-        "a^")
-        .as_str());
-    "soure_objects_updated"
 }
 
 #[pg_extern]
@@ -178,64 +134,14 @@ fn source_column() -> Result<
     .map(TableIterator::new)
 }
 
-#[pg_extern]
-fn evaluate_table(table: &str) -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(schema_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(table_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_name, Result<Option<String>, pgrx::spi::Error>),
-            name!(column_cat, Result<Option<String>, pgrx::spi::Error>),
-            name!(confidence_level, Result<Option<String>, pgrx::spi::Error>),
-            name!(is_overridden, Result<Option<bool>, pgrx::spi::Error>)
-        )
-    >,
-    spi::Error,
-> {
-    let schema = "public";
-    // let table = "customer";
-
-    let query_string = format!(r#"
-        SELECT schema_name, 
-            table_name, 
-            column_name, 
-            column_cat, 
-            confidence_level, 
-            is_overridden 
-        FROM auto_dw.table_column_cat
-        WHERE 
-            schema_name = '{}' AND 
-            table_name = '{}'
-        "#, schema, table);
-    
-    let query: &str = query_string.as_str();
-
-    info!("Evaluation of TABLE customer");
-    Spi::connect(|client| {
-        Ok(client
-            .select(query, None, None)?
-            .map(|row| (
-                row["schema_name"].value(), 
-                row["table_name"].value(), 
-                row["column_name"].value(),
-                row["column_cat"].value(),
-                row["confidence_level"].value(),
-                row["is_overridden"].value())
-            )
-            .collect::<Vec<_>>())
-    })
-    .map(TableIterator::new)
-}
-
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
 mod tests {
     use pgrx::prelude::*;
 
+    // TODO: Unit Testing
     #[pg_test]
-    fn test_hello_pg_auto_dw() {
-        assert_eq!("Hello, pg_auto_dw", crate::hello_pg_auto_dw());
+    fn go_default() {
     }
 
 }

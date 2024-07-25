@@ -40,9 +40,6 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
                         let table_oid: u32 = dv_object.get_datum_by_ordinal(8).unwrap().value::<u32>().unwrap().unwrap();
                         let column_ordinal_position = dv_object.get_datum_by_ordinal(9).unwrap().value::<i16>().unwrap().unwrap();
                         
-                        // log!("dv_object PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                        // schema_name, table_name, column_category, column_name, column_type_name, system_id, table_oid, column_ordinal_position);
-
                         let column_category = ColumnCategory::from_str(&column_category);
 
                         let transformer_object: TransformerObject = 
@@ -97,7 +94,6 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
                 column_type_name: dv_object.column_type_name.clone(),
             };
             let orbit = dv_object.table_name.clone();
-            // let orbit = dv_object.business_key_name.clone();
 
             if dv_object.column_category == ColumnCategory::Descriptor {
                 let descriptor = get_descriptor(dv_object.column_name.clone(), column_data, orbit, false);
@@ -149,7 +145,6 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
             descriptors 
         };
 
-        // log!("Business Key for DV Generation: {:?}", business_key);
         business_keys.push(business_key);
     }
 
@@ -164,12 +159,10 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         dv_ddl_sql.push_str(&dv_business_key_ddl_sql);
     }
 
-    log!("DDL Full: {}", &dv_ddl_sql);
+    // log!("DDL Full: {}", &dv_ddl_sql);
 
     // Build Tables using DDL
     Spi::connect( |mut client| {
-            log!("Building DV Tables");
-            // client.select(dv_objects_query, None, None);
             _ = client.update(&dv_ddl_sql, None, None);
             log!("DV Tables Built");
         }
@@ -226,14 +219,11 @@ fn dv_schema_push_to_repo(build_id: &String, dv_schema: &mut DVSchema) {
 
     // Build Tables using DDL
     Spi::connect( |mut client| {
-        log!("DV Schema: Pushing to REPO TABLE");
-        log!("Schema JSON: {}", &repo_json_string);
         _ = client.update(insert_schema_query, None, 
             Some(vec![
                 (PgOid::from(pg_sys::TEXTOID), build_id.into_datum()),
                 (PgOid::from(pg_sys::JSONOID), repo_json_string.into_datum()),
             ]));
-        log!("DV Schema: Pushed to REPO TABLE");
         }
     );
 
@@ -266,12 +256,7 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                             let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
                             let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
 
-
-                            log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                                system_id, _schema_oid, schema_name, table_name, table_oid, column_name, column_ordinal_position, column_type_name);
-
                             let column_id = Uuid::new_v4();
-
 
                             let column_data = ColumnData {
                                 id: column_id,
@@ -284,12 +269,10 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                                 column_type_name,
                             };
 
-                            // descriptor.descriptor_link.target_column_entiy = Some(enity);
                             return Some(column_data)
                             
                         } else {
                             log!("Column Data Not available.");
-                            
                         }
                         return None
                     }
@@ -326,12 +309,7 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                             let column_ordinal_position =  column_data_record.get_datum_by_ordinal(7).unwrap().value::<i16>().unwrap().unwrap(); 
                             let column_type_name =  column_data_record.get_datum_by_ordinal(8).unwrap().value::<String>().unwrap().unwrap();
 
-
-                            log!("Column Data PrintOut: {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}", 
-                                system_id, _schema_oid, schema_name, table_name, table_oid, column_name, column_ordinal_position, column_type_name);
-
                             let column_id = Uuid::new_v4();
-
 
                             let column_data = ColumnData {
                                 id: column_id,
@@ -344,7 +322,6 @@ fn dv_schema_add_target_columns(dv_schema: &mut DVSchema) {
                                 column_type_name,
                             };
 
-                            // descriptor.descriptor_link.target_column_entiy = Some(enity);
                             return Some(column_data)
                             
                         } else {
@@ -381,7 +358,7 @@ fn get_descriptor(column_name: String, column_data: ColumnData, orbit: String, i
         orbit,
         is_sensitive,
     };
-    // log!("dv Enity Object {:?}", &descriptor);
+
     descriptor
 }
 
@@ -421,7 +398,6 @@ fn build_sql_from_business_key(dw_schema: &String, business_key: &BusinessKey) -
         );
     "#, dw_schema, business_key.name, business_key.name, hub_bks);
 
-    // log!("Hub SQL: {}", hub);
     dv_business_key_ddl_sql.push_str(&format!(
         r#"
         {}"#, hub_sql));

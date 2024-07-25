@@ -24,7 +24,6 @@ pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
                 match table_check_results {
                     Ok(table_check) => {
                         if table_check.len() > 0 {
-                            log!("TABLE AUTO_DW.SOURCE_OJBECTS exists. Proceeding with update.");
                             client.update(
                                 queries::source_object_dw(
                                     "a^", 
@@ -38,7 +37,7 @@ pub extern "C" fn background_worker_source_objects(_arg: pg_sys::Datum) {
                                 None,
                             )?;
                         } else {
-                            panic!("TABLE AUTO_DW.SOURCE_OJBECTS not found. PG_AUTO_DW Extension may need to be installed.");
+                            panic!("TABLE AUTO_DW.SOURCE_OBJECTS not found. PG_AUTO_DW Extension may need to be installed.");
                         }
                     },
                     Err(e) => {
