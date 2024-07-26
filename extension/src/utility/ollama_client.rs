@@ -1,4 +1,3 @@
-use pgrx::log;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
