@@ -1,10 +1,11 @@
+use pgrx::log;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::utility::guc;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct GenerateRequest {
     pub model: String,
     pub prompt: String,
