@@ -5,6 +5,7 @@
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/4020)](https://ossrank.com/p/4020)
+[![Warning: Under Active Development](https://img.shields.io/badge/Warning-Under_Active_Development-red)](https://github.com/tembo-io/pg_auto_dw)
 
 ## Background
 
@@ -21,7 +22,7 @@ To create an open source extension that automates the data warehouse build.  We 
 - Understand DW Health
 - Support Data Governance
 
-All these capabilities will be delivered through a [small set of intuitive functions](docs/sql_functions/readme.md).
+All these capabilities will be delivered through a [small set of intuitive functions](extension/docs/sql_functions/readme.md).
 
 ## Principles
 * Build in public
@@ -44,7 +45,7 @@ We are starting with automation to facilitate a data vault implementation for ou
 We're currently working on a timeline to define points of success and ensure the smooth integration of new contributors to our project. This includes creating milestones, contributor guidelines, and hosting activities such as webinars and meetups. Stay tuned!
 
 ## Installation
-We are currently developing a new extension, starting with an initial set of defined [functions](docs/sql_functions/readme.md) and implementing a subset of these functions in a mockup extension. This mockup version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo below. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope this will offer a glimpse of what to expect in the weeks ahead.
+We are currently developing a new extension, starting with an initial set of defined [functions](extension/docs/sql_functions/readme.md) and implementing a subset of these functions in a mockup extension. This mockup version features skeletal implementations of some functions, designed just to demonstrate our envisioned capabilities as seen in the demo below. Our demo is divided into two parts: Act 1 and Act 2.  If you follow along, I hope this will offer a glimpse of what to expect in the weeks ahead.
 
 If you’re interested in exploring this preliminary version, please follow these steps:
 
