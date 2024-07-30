@@ -5,6 +5,7 @@
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/4020)](https://ossrank.com/p/4020)
+[![Warning: Under Active Development](https://img.shields.io/badge/Warning-Under_Active_Development-red)](https://github.com/tembo-io/pg_auto_dw)
 
 ## Background
 
