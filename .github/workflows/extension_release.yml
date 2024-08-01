@@ -1,4 +1,4 @@
-name: Release pg_auto_dwh
+name: Release pg_auto_dw
 
 defaults:
   run:
@@ -20,40 +20,8 @@ on:
     types:
       - created
 jobs:
-  dependencies:
-    name: Install dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          cache-directories: /home/runner/.pgrx
-
-      - name: Install stoml and pg-trunk
-        shell: bash
-        run: |
-          set -xe
-          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-          mv stoml_linux_amd64 stoml
-          chmod +x stoml
-          sudo mv stoml /usr/local/bin/
-          cargo install pg-trunk
-
-      - name: Cache binaries
-        uses: actions/cache@v2
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
-
   publish:
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-latest
     strategy:
