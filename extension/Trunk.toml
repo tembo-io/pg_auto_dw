@@ -1,0 +1,14 @@
+[extension]
+name = "pg_auto_dw"
+version = "0.0.1"
+repository = "https://github.com/tembo-io/pg_auto_dw"
+license = "PostgreSQL"
+description = "An auto data warehouse extension for Postgres."
+homepage = "https://github.com/tembo-io/pg_auto_dw"
+documentation = "https://github.com/tembo-io/pg_auto_dw"
+categories = ["analytics", "orchestration"]
+loadable_libraries = [{ library_name = "pg_auto_dw", requires_restart = true }]
+
+[build]
+postgres_version = "15"
+platform = "linux/amd64"
