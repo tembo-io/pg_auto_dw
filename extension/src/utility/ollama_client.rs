@@ -1,3 +1,4 @@
+use pgrx::prelude::*;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -23,7 +24,7 @@ pub struct GenerateResponse {
 
 pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
 
-    let client = ClientBuilder::new().timeout(Duration::from_secs(90)).build()?; // 30 sec Default to short for some LLMS.
+    let client = ClientBuilder::new().timeout(Duration::from_secs(180)).build()?; // 30 sec Default to short for some LLMS.
     
     let prompt_template = r#"
       You are given a JSON object containing the schema name, table name, and details about each column in a table. This is source table information and downstream we are creating data vault tables. In this case, we are focusing on categorization for building hubs and satellites. Your task is to categorize each column into one of three categories: "Business Key Part," "Descriptor," or "Descriptor - Sensitive." The response should include the column number, the category type, and a confidence score for each categorization. 
@@ -94,13 +95,17 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       
       If you have qualifiers, like it would be a "Descriptor - Sensitive" if this case is true.  Lower your confidence score and include that in the reasons.
       
-      Hard Rule: Only categories into the 3 categories listed above.
+      Hard Rule: Only categorize these into 3 distinct categories listed above and here, "Business Key Part", "Descriptor", or "Descriptor - Sensitive".  DO NOT RETURN categories not on this list like "Descriptor - Timestamp".
 
       Return the output JSON with the column number, the category type, a confidence score, and reason for each column. Plus, if the category is a business key part, provide a business key name at the attribute level.  The business key name should be derived from the table name and the attributes associated with the business key parts.  The name should exclude terms like "ID," "number," and "Entity," and reflecting only the core business entity name.  If the category is not a business key part specify "Business Key Name: "NA" as the example above shows.
+
+      And AGAIN there are only 3 categories, "Business Key Part", "Descriptor", or "Descriptor - Sensitive".  If you think the answer is "Descriptor - Timestamp" that is incorrect and most like should just be "Descriptor".
       "#;
 
     // Inject new_json into the prompt_template
     let prompt = prompt_template.replace("{new_json}", new_json);
+
+    log!("JSON: {new_json}");
 
     // GUC Values for the transformer server
     let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
@@ -123,6 +128,7 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
 
     // Deserialize
     let response_json: serde_json::Value = serde_json::from_str(&response.response)?;
+    log!("JSON: {response_json}");
 
     Ok(response_json)
 }

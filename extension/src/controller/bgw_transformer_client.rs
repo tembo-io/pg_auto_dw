@@ -9,6 +9,7 @@ use serde_json::from_value;
 use crate::queries;
 use crate::model::source_objects;
 use crate::utility::ollama_client;
+use crate::utility::guc;
 
 #[pg_guard]
 #[no_mangle]
@@ -99,7 +100,8 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             let reason = &column_detail.reason.replace("'", "''");
                             let pk_source_objects = column_link.pk_source_objects;
                             
-                            let model_name = "Mixtral";
+                            let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                            let model_name = model_name_owned.as_str();
                             
                             if not_last {
                                 insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
