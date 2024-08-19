@@ -95,8 +95,11 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
       
       If you have qualifiers, like it would be a "Descriptor - Sensitive" if this case is true.  Lower your confidence score and include that in the reasons.
       
-      Hard Rule: Only categorize these into 3 distinct categories listed above and here, "Business Key Part", "Descriptor", or "Descriptor - Sensitive".  DO NOT RETURN categories not on this list like "Descriptor - Timestamp".
-
+      Hard Rules: 
+       1) Only categorize these into 3 distinct categories listed above and here, "Business Key Part", "Descriptor", or "Descriptor - Sensitive".  DO NOT RETURN categories not on this list like "Descriptor - Timestamp".
+       2) You should return as many columns back as is given without consolidation.  And none should be skipped.
+       3) Only one attribute should be associate with a business key and typically it's at the beginning.  For example column number 10, username, should not be consider a business key.
+      
       Return the output JSON with the column number, the category type, a confidence score, and reason for each column. Plus, if the category is a business key part, provide a business key name at the attribute level.  The business key name should be derived from the table name and the attributes associated with the business key parts.  The name should exclude terms like "ID," "number," and "Entity," and reflecting only the core business entity name.  If the category is not a business key part specify "Business Key Name: "NA" as the example above shows.
 
       And AGAIN there are only 3 categories, "Business Key Part", "Descriptor", or "Descriptor - Sensitive".  If you think the answer is "Descriptor - Timestamp" that is incorrect and most like should just be "Descriptor".
@@ -128,7 +131,8 @@ pub async fn send_request(new_json: &str) -> Result<serde_json::Value, Box<dyn s
 
     // Deserialize
     let response_json: serde_json::Value = serde_json::from_str(&response.response)?;
-    log!("JSON: {response_json}");
+    
+    log!("JSON Reply: {response_json}");
 
     Ok(response_json)
 }

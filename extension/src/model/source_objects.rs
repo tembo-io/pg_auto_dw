@@ -1,5 +1,5 @@
 use pgrx::Json as JsonValue;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer,  Serialize};
 
 #[derive(Debug)]
 pub struct SourceTablePrompt {
@@ -21,7 +21,7 @@ pub struct Response {
 pub struct GenerationColumnDetail {
     #[serde(rename = "Category")]
     pub category: String,
-    #[serde(rename = "Business Key Name")]
+    #[serde(rename = "Business Key Name", deserialize_with = "replace_spaces_with_underscores")]
     pub business_key_name: String,
     #[serde(rename = "Column No")]
     pub column_no: i32,
@@ -53,4 +53,12 @@ pub struct ColumnLink {
 pub struct TableLinks {
     #[serde(rename = "Column Links")]
     pub column_links: Vec<ColumnLink>,
+}
+
+fn replace_spaces_with_underscores<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(s.replace(' ', "_"))
 }
