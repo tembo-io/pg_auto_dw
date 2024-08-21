@@ -9,6 +9,18 @@ pub struct SourceTablePrompt {
     pub table_details: JsonValue,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceTableDetail {
+    #[serde(rename = "Schema Name")]
+    pub schema_name: String,
+
+    #[serde(rename = "Table Name")]
+    pub table_name: String,
+
+    #[serde(rename = "Column Details")]
+    pub column_details: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
     #[serde(rename = "Table ID")]
@@ -17,7 +29,7 @@ pub struct Response {
     pub generation: GenerationTableDetail,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationColumnDetail {
     #[serde(rename = "Category")]
     pub category: String,
@@ -31,7 +43,7 @@ pub struct GenerationColumnDetail {
     pub reason: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationTableDetail {
     #[serde(rename = "Schema Name")]
     pub schema_name: String,
