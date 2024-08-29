@@ -2,8 +2,10 @@ use pgrx::bgworkers::*;
 use pgrx::prelude::*;
 
 use std::time::Duration;
+use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde_json::from_value;
 
 use crate::model;
@@ -23,10 +25,8 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
     // Initialize Tokio runtime
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
 
-
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
         
-
             // Load Prompts into Results
             let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
                 Spi::connect(|client| {
@@ -61,7 +61,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_str(&table_column_link_json_str).ok();
                 
                 // Define generation_json_o outside the runtime.block_on block
-                let mut generation_json_o: Option<serde_json::Value> = None;
+                // let mut generation_json_o: Option<serde_json::Value> = None;
 
                 ////////////
                 // WIP: GenerationTableDetail less columns
@@ -79,19 +79,75 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 // WIP: Iterate Through All Columns
 
                 let columns = extract_column_numbers(&table_details_json_str);
+                let mut hints = "";
 
-                for column in columns {
+                let mut generation_json_bk_identification: Option<serde_json::Value> = None;
+                runtime.block_on(async {
+                    // Get Generation
+                    generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
+                        Ok(response_json) => {
+                            
+                            let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                                                                .expect("Failed to convert Response JSON to Pretty String.");
+
+                            log!("Table Details JSON STR: {table_details_json_str}");
+                            log!("BKID Response: {response_json_pretty}");
+
+                            Some(response_json)
+                        },
+                        Err(e) => {
+                            log!("Error in Ollama client request: {}", e);
+                            None
+                        }
+                    };
+                });
+
+                let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
+
+                log!("BK ID JSON: {:?}", identified_business_key);
+
+                let mut generation_json_bk_name: Option<serde_json::Value> = None;
+                runtime.block_on(async {
+                    // Get Generation
+                    generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
+                        Ok(response_json) => {
+                            
+                            let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                                                                .expect("Failed to convert Response JSON to Pretty String.");
+
+                            log!("Table Details JSON STR: {table_details_json_str}");
+                            log!("BK Name Column Response: {response_json_pretty}");
+
+                            Some(response_json)
+                        },
+                        Err(e) => {
+                            log!("Error in Ollama client request: {}", e);
+                            None
+                        }
+                    };
+                });
+
+                let business_key_name: BusinessKeyName = serde_json::from_value(generation_json_bk_name.unwrap()).expect("Not valid JSON");
+                log!("Business Key Name: {:?}", business_key_name);
+
+                let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
+                for column in &columns {
                 // Run the async block
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_o = match ollama_client::send_request(table_details_json_str.as_str(), column).await {
+                        let generation_json_descriptor_sensitive: Option<serde_json::Value> = 
+                            match ollama_client::send_request(
+                                table_details_json_str.as_str(), 
+                                ollama_client::PromptTemplate::DescriptorSensitive, 
+                                column, 
+                                &hints).await {
                             Ok(response_json) => {
                                 
                                 let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                                                                     .expect("Failed to convert Response JSON to Pretty String.");
 
-                                // log!("Table Details JSON STR: {table_details_json_str}");
-                                log!("Transformer Column Response: {response_json_pretty}");
+                                log!("Column No: {column}, Table Details JSON STR: {table_details_json_str}");
+                                log!("Descriptor - Sensitive: {response_json_pretty}");
 
                                 Some(response_json)
                             },
@@ -100,7 +156,18 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 None
                             }
                         };
+                        generation_json_descriptors_sensitive.insert(column, generation_json_descriptor_sensitive);
                     });
+                }
+                
+
+                for column in &columns {
+                    if let Some(json) = generation_json_descriptors_sensitive.get(&column) {
+                        let descriptor_sensitive: DescriptorSensitive = serde_json::from_value(json.clone().unwrap()).expect("Not valid JSON");
+                        log!("Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
+                    } else {
+                        log!("Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+                    }
                 }
                 ////////////
 
@@ -126,11 +193,11 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
             //     let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = deserialize_option(generation_json_o);
 
                 
-            //     let table_column_links = table_column_links_o.unwrap();
+                let table_column_links = table_column_links_o.unwrap();
             //     let generation_table_detail = generation_table_detail_o.unwrap();
 
             //     // Build the SQL INSERT statement
-            //     let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
+                let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
 
             //     for (index, column_link) in table_column_links.column_links.iter().enumerate() {
 
@@ -189,3 +256,52 @@ fn extract_column_numbers(json_str: &str) -> Vec<u32> {
         .filter_map(|caps| caps.get(1).map(|m| m.as_str().parse::<u32>().unwrap()))
         .collect()
 }
+
+#[derive(Deserialize, Debug)]
+struct IdentifiedBusinessKey {
+    #[serde(rename = "Identified Business Key")]
+    identified_business_key: IdentifiedBusinessKeyValues,
+}
+
+#[derive(Deserialize, Debug)]
+struct IdentifiedBusinessKeyValues {
+    #[serde(rename = "Column No")]
+    column_no: u32,
+    #[serde(rename = "Confidence Value")]
+    confidence_value: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct BusinessKeyName {
+    #[serde(rename = "Business Key Name")]
+    identified_business_key: BusinessKeyNameValues,
+}
+
+#[derive(Deserialize, Debug)]
+struct BusinessKeyNameValues {
+    #[serde(rename = "Name")]
+    name: String,
+    #[serde(rename = "Confidence Value")]
+    confidence_value: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct DescriptorSensitive {
+    #[serde(rename = "Descriptor - Sensitive")]
+    identified_business_key: DescriptorSensitiveValues,
+}
+
+#[derive(Deserialize, Debug)]
+struct DescriptorSensitiveValues {
+    #[serde(rename = "Is PII")]
+    is_pii: bool,
+    #[serde(rename = "Confidence Value")]
+    confidence_value: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
+}
+
