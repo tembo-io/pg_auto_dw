@@ -104,7 +104,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
 
-                log!("BK ID JSON: {:?}", identified_business_key);
+                log!("BK ID JSON: {:?}", &identified_business_key);
 
                 let mut generation_json_bk_name: Option<serde_json::Value> = None;
                 runtime.block_on(async {
@@ -161,15 +161,14 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 }
                 
 
-                for column in &columns {
-                    if let Some(json) = generation_json_descriptors_sensitive.get(&column) {
-                        let descriptor_sensitive: DescriptorSensitive = serde_json::from_value(json.clone().unwrap()).expect("Not valid JSON");
-                        log!("Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
-                    } else {
-                        log!("Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
-                    }
-                }
-                ////////////
+                // for column in &columns {
+                //     if let Some(json) = generation_json_descriptors_sensitive.get(&column) {
+                //         let descriptor_sensitive: DescriptorSensitive = serde_json::from_value(json.clone().unwrap()).expect("Not valid JSON");
+                //         log!("Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
+                //     } else {
+                //         log!("Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+                //     }
+                // }
 
             //     // Run the async block
             //     runtime.block_on(async {
@@ -199,40 +198,128 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
             //     // Build the SQL INSERT statement
                 let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
 
-            //     for (index, column_link) in table_column_links.column_links.iter().enumerate() {
+                log!("Table Column Links: {:?}", table_column_links);
 
-            //         let not_last = index != table_column_links.column_links.len() - 1;
+                for (index, column) in columns.iter().enumerate() {
 
-            //         let index_o = generation_table_detail.response_column_details.iter().position(|r| r.column_no == column_link.column_ordinal_position);
-            //         match index_o {
-            //             Some(index) => {
-            //                 let column_detail = &generation_table_detail.response_column_details[index];
+                    let last = {index == table_column_links.column_links.len() - 1};
+
+                    if column == &identified_business_key.identified_business_key_values.column_no {
+
+                        let category = "Business Key Part";
+                        let confidence_score = identified_business_key.identified_business_key_values.confidence_value * business_key_name.business_key_name_values.confidence_value;
+                        let bk_name = &business_key_name.business_key_name_values.name;
+                        let bk_identified_reason = &identified_business_key.identified_business_key_values.reason;
+                        let bk_name_reason = &business_key_name.business_key_name_values.reason;
+                        let reason = format!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
+                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                        let model_name = model_name_owned.as_str();
+
+                        // let a = table_column_links.column_links.get(column);
+                        let mut pk_source_objects: i32 = 0;    
+                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+                            pk_source_objects = pk_source_objects_temp;
+                        } else {
+                            println!("No match found for column_ordinal_position: {}", column);
+                            panic!()
+                        }
+
+                        // println!("PK Source Object: {}", pk_source_objects);
+                        // log!("BK Column for Insert: {}", column);
+                        // log!("Category: {}", category);
+                        // log!("BK Name: {}", bk_name);
+                        // log!("Confidence Score: {}", confidence_score);
+                        // log!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
+                        // log!("Model Name: {}", model_name);
+
+                        if !last {
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                        } else {
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                        }
+
+                    } else {
+
+                        let mut pk_source_objects: i32 = 0; 
+                        let mut category = "Descriptor";
+                        let mut confidence_score: f64 = 1.0;
+                        let bk_name = "NA";
+                        let mut reason = "Defaulted of category 'Descriptor' maintained.".to_string();
+                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                        let model_name = model_name_owned.as_str();
+                        
+
+                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+                            pk_source_objects = pk_source_objects_temp;
+                        } else {
+                            println!("No match found for column_ordinal_position: {}", column);
+                            panic!()
+                        }
+
+                        if let Some(json) = generation_json_descriptors_sensitive.get(&column) {
+                            let descriptor_sensitive: DescriptorSensitive = serde_json::from_value(json.clone().unwrap()).expect("Not valid JSON");
+                            if descriptor_sensitive.descriptor_sensitive_values.is_pii && (descriptor_sensitive.descriptor_sensitive_values.confidence_value > 0.5) {
+                                category = "Descriptor - Sensitive";
+                                confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
+                                reason = descriptor_sensitive.descriptor_sensitive_values.reason;
+                            }
+                            // log!("Teseting Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
+                        } else {
+                            log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+                        }
+                        log!("Desc Column for Insert: {}", column);
+
+                        if !last {
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                        } else {
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                        }
+                    }
+
+                    if last {
+                        log!("Last Col");
+                    }
+
+                    log!("SQL Push: {}", insert_sql);
+                }
+
+                // for (index, column_link) in table_column_links.column_links.iter().enumerate() {
+
+                //     let not_last = index != table_column_links.column_links.len() - 1;
+
+                    
+
+                    // let index_o = generation_table_detail.response_column_details.iter().position(|r| r.column_no == column_link.column_ordinal_position);
+
+                    // match index_o {
+                    //     Some(index) => {
+                    //         let column_detail = &generation_table_detail.response_column_details[index];
                             
-            //                 let category = &column_detail.category.replace("'", "''");
-            //                 let business_key_name = &column_detail.business_key_name.replace("'", "''");
-            //                 let confidence_score = &column_detail.confidence;
-            //                 let reason = &column_detail.reason.replace("'", "''");
-            //                 let pk_source_objects = column_link.pk_source_objects;
+                    //         let category = &column_detail.category.replace("'", "''");
+                    //         let business_key_name = &column_detail.business_key_name.replace("'", "''");
+                    //         let confidence_score = &column_detail.confidence;
+                    //         let reason = &column_detail.reason.replace("'", "''");
+                    //         let pk_source_objects = column_link.pk_source_objects;
                             
-            //                 let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-            //                 let model_name = model_name_owned.as_str();
+                    //         let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                    //         let model_name = model_name_owned.as_str();
                             
-            //                 if not_last {
-            //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
-            //                 } else {
-            //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
-            //                 }
-            //             }
-            //             None => {break;}
-            //         }
-            //     }
+                    //         if not_last {
+                    //             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
+                    //         } else {
+                    //             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
+                    //         }
+                    //     }
+                    //     None => {break;}
+                    // }
+                // }
                 
-            //     // Push Generation to TABLE TRANSFORMER_RESPONSES 
-            //     BackgroundWorker::transaction(|| {
-            //         Spi::connect(|mut client| {
-            //             _ = client.update(insert_sql.as_str(), None, None);
-            //         })
-            //     });
+                // Push Generation to TABLE TRANSFORMER_RESPONSES 
+                BackgroundWorker::transaction(|| {
+                    Spi::connect(|mut client| {
+                        _ = client.update(insert_sql.as_str(), None, None);
+                    })
+                });
         }
         
     }
@@ -260,7 +347,7 @@ fn extract_column_numbers(json_str: &str) -> Vec<u32> {
 #[derive(Deserialize, Debug)]
 struct IdentifiedBusinessKey {
     #[serde(rename = "Identified Business Key")]
-    identified_business_key: IdentifiedBusinessKeyValues,
+    identified_business_key_values: IdentifiedBusinessKeyValues,
 }
 
 #[derive(Deserialize, Debug)]
@@ -276,7 +363,7 @@ struct IdentifiedBusinessKeyValues {
 #[derive(Deserialize, Debug)]
 struct BusinessKeyName {
     #[serde(rename = "Business Key Name")]
-    identified_business_key: BusinessKeyNameValues,
+    business_key_name_values: BusinessKeyNameValues,
 }
 
 #[derive(Deserialize, Debug)]
@@ -292,7 +379,7 @@ struct BusinessKeyNameValues {
 #[derive(Deserialize, Debug)]
 struct DescriptorSensitive {
     #[serde(rename = "Descriptor - Sensitive")]
-    identified_business_key: DescriptorSensitiveValues,
+    descriptor_sensitive_values: DescriptorSensitiveValues,
 }
 
 #[derive(Deserialize, Debug)]

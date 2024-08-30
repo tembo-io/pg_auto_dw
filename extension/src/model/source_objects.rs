@@ -67,6 +67,18 @@ pub struct TableLinks {
     pub column_links: Vec<ColumnLink>,
 }
 
+impl TableLinks {
+    // Method to find the pk_source_objects based on column_ordinal_position
+    pub fn find_pk_source_objects(&self, search_position: i32) -> Option<i32> {
+        for link in &self.column_links {
+            if link.column_ordinal_position == search_position {
+                return Some(link.pk_source_objects);
+            }
+        }
+        None
+    }
+}
+
 fn replace_spaces_with_underscores<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
