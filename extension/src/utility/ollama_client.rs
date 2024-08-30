@@ -682,6 +682,7 @@ impl PromptTemplate {
             - State: Not PII
             - Country: Not PII
             - Age (in years): Not PII (Unless combined with other identifiers like date of birth).
+            - Date or Timestamp (Example: created_date, created_timestamp, update_Date, update_timestamp): Not PII (Unless combined with other identiviers like date of birth)
             - Gender: Not PII
             - Ethnicity/Race: Not PII (General categories, e.g., “Caucasian,” “Asian,” without additional identifiers).
             - Publicly Available Information: Not PII (Any information that is lawfully made available from federal, state, or local government records).

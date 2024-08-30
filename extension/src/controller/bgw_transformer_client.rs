@@ -233,9 +233,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                         // log!("Model Name: {}", model_name);
 
                         if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
                         } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
                         }
 
                     } else {
@@ -270,9 +270,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                         log!("Desc Column for Insert: {}", column);
 
                         if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
                         } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name, confidence_score, reason.replace("'", "''")));
+                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
                         }
                     }
 
