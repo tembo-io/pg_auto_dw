@@ -4,11 +4,8 @@ use pgrx::prelude::*;
 use std::time::Duration;
 use std::collections::HashMap;
 use tokio::runtime::Runtime;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use serde_json::from_value;
 
-use crate::model;
 use crate::queries;
 use crate::model::source_objects;
 use crate::utility::ollama_client;
@@ -59,27 +56,10 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
                 let table_column_links_o: Option<source_objects::TableLinks> = serde_json::from_str(&table_column_link_json_str).ok();
-                
-                // Define generation_json_o outside the runtime.block_on block
-                // let mut generation_json_o: Option<serde_json::Value> = None;
-
-                ////////////
-                // WIP: GenerationTableDetail less columns
-                // Provide Request w/out listed columns
-                // let table_details_json_str = serde_json::to_string(&source_table_prompt.table_details).expect("Failed to convert Json to String");
-                // let source_table_details: model::source_objects::SourceTableDetail = serde_json::from_str(&table_details_json_str).expect("Failed to deserialize JSON");
-                // let mut source_table_details_incremental_build = source_table_details.clone();
-                // source_table_details_incremental_build.column_details = Vec::new();
-                // let source_table_details_incremental_build_str = serde_json::to_string_pretty(&source_table_details_incremental_build)
-                //                                                             .expect("Failed to convered source_table_details_incremental_build to string.");
-
-
-                // WIP: Request 1st Column Response
-                // WIP: Integrate Column
-                // WIP: Iterate Through All Columns
 
                 let columns = extract_column_numbers(&table_details_json_str);
-                let mut hints = "";
+
+                let hints = "";
 
                 let mut generation_json_bk_identification: Option<serde_json::Value> = None;
                 runtime.block_on(async {
@@ -160,42 +140,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     });
                 }
                 
-
-                // for column in &columns {
-                //     if let Some(json) = generation_json_descriptors_sensitive.get(&column) {
-                //         let descriptor_sensitive: DescriptorSensitive = serde_json::from_value(json.clone().unwrap()).expect("Not valid JSON");
-                //         log!("Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
-                //     } else {
-                //         log!("Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
-                //     }
-                // }
-
-            //     // Run the async block
-            //     runtime.block_on(async {
-            //         // Get Generation
-            //         generation_json_o = match ollama_client::send_request(table_details_json_str.as_str()).await {
-            //             Ok(response_json) => {
-            //                 let response_json_pretty = serde_json::to_string_pretty(&response_json)
-            //                                                     .expect("Failed to convert Response JSON to Pretty String.");
-            //                 log!("Transformer client request successful. {response_json_pretty}");
-            //                 Some(response_json)
-            //             },
-            //             Err(e) => {
-            //                 log!("Error in Ollama client request: {}", e);
-            //                 None
-            //             }
-            //         };
-            //     });
-
-                
-                
-            //     let generation_table_detail_o: Option<source_objects::GenerationTableDetail> = deserialize_option(generation_json_o);
-
-                
                 let table_column_links = table_column_links_o.unwrap();
-            //     let generation_table_detail = generation_table_detail_o.unwrap();
 
-            //     // Build the SQL INSERT statement
+               // Build the SQL INSERT statement
                 let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
 
                 log!("Table Column Links: {:?}", table_column_links);
@@ -215,22 +162,13 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                         let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
                         let model_name = model_name_owned.as_str();
 
-                        // let a = table_column_links.column_links.get(column);
-                        let mut pk_source_objects: i32 = 0;    
+                        let pk_source_objects: i32;   
                         if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
                             pk_source_objects = pk_source_objects_temp;
                         } else {
                             println!("No match found for column_ordinal_position: {}", column);
                             panic!()
                         }
-
-                        // println!("PK Source Object: {}", pk_source_objects);
-                        // log!("BK Column for Insert: {}", column);
-                        // log!("Category: {}", category);
-                        // log!("BK Name: {}", bk_name);
-                        // log!("Confidence Score: {}", confidence_score);
-                        // log!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
-                        // log!("Model Name: {}", model_name);
 
                         if !last {
                             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
@@ -240,7 +178,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                     } else {
 
-                        let mut pk_source_objects: i32 = 0; 
+                        let pk_source_objects: i32; 
                         let mut category = "Descriptor";
                         let mut confidence_score: f64 = 1.0;
                         let bk_name = "NA";
@@ -282,37 +220,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                     log!("SQL Push: {}", insert_sql);
                 }
-
-                // for (index, column_link) in table_column_links.column_links.iter().enumerate() {
-
-                //     let not_last = index != table_column_links.column_links.len() - 1;
-
-                    
-
-                    // let index_o = generation_table_detail.response_column_details.iter().position(|r| r.column_no == column_link.column_ordinal_position);
-
-                    // match index_o {
-                    //     Some(index) => {
-                    //         let column_detail = &generation_table_detail.response_column_details[index];
-                            
-                    //         let category = &column_detail.category.replace("'", "''");
-                    //         let business_key_name = &column_detail.business_key_name.replace("'", "''");
-                    //         let confidence_score = &column_detail.confidence;
-                    //         let reason = &column_detail.reason.replace("'", "''");
-                    //         let pk_source_objects = column_link.pk_source_objects;
-                            
-                    //         let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-                    //         let model_name = model_name_owned.as_str();
-                            
-                    //         if not_last {
-                    //             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
-                    //         } else {
-                    //             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, business_key_name, confidence_score, reason));
-                    //         }
-                    //     }
-                    //     None => {break;}
-                    // }
-                // }
                 
                 // Push Generation to TABLE TRANSFORMER_RESPONSES 
                 BackgroundWorker::transaction(|| {
@@ -323,15 +230,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
         }
         
     }
-}
-
-fn deserialize_option<T>(json_option: Option<serde_json::Value>) -> Option<T>
-where
-    T: DeserializeOwned
-{
-    json_option.and_then(|json| {
-        from_value::<T>(json).ok()
-    })
 }
 
 fn extract_column_numbers(json_str: &str) -> Vec<u32> {
