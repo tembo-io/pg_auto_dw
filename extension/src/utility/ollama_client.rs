@@ -40,8 +40,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
                           .replace("{column_no}", &column_number)
                           .replace("{hints}", &hints);  
 
-    // log!("Propmt: {prompt}");
-
     // GUC Values for the transformer server
     let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
     let model = guc::get_guc(guc::PgAutoDWGuc::Model).ok_or("MODEL GUC is not set.")?;
@@ -70,8 +68,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
 
     // Deserialize
     let response_json: serde_json::Value = serde_json::from_str(&response.response)?;
-    
-    // log!("JSON Reply: {response_json}");
 
     Ok(response_json)
 }

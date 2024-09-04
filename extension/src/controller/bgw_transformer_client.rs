@@ -70,9 +70,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                                                                 .expect("Failed to convert Response JSON to Pretty String.");
 
-                            log!("Table Details JSON STR: {table_details_json_str}");
-                            log!("BKID Response: {response_json_pretty}");
-
                             Some(response_json)
                         },
                         Err(e) => {
@@ -84,8 +81,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
 
-                log!("BK ID JSON: {:?}", &identified_business_key);
-
                 let mut generation_json_bk_name: Option<serde_json::Value> = None;
                 runtime.block_on(async {
                     // Get Generation
@@ -94,9 +89,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             
                             let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                                                                 .expect("Failed to convert Response JSON to Pretty String.");
-
-                            log!("Table Details JSON STR: {table_details_json_str}");
-                            log!("BK Name Column Response: {response_json_pretty}");
 
                             Some(response_json)
                         },
@@ -108,7 +100,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 });
 
                 let business_key_name: BusinessKeyName = serde_json::from_value(generation_json_bk_name.unwrap()).expect("Not valid JSON");
-                log!("Business Key Name: {:?}", business_key_name);
 
                 let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
                 for column in &columns {
@@ -126,9 +117,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                                                                     .expect("Failed to convert Response JSON to Pretty String.");
 
-                                log!("Column No: {column}, Table Details JSON STR: {table_details_json_str}");
-                                log!("Descriptor - Sensitive: {response_json_pretty}");
-
                                 Some(response_json)
                             },
                             Err(e) => {
@@ -144,8 +132,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                // Build the SQL INSERT statement
                 let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
-
-                log!("Table Column Links: {:?}", table_column_links);
 
                 for (index, column) in columns.iter().enumerate() {
 
@@ -201,11 +187,9 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
                                 reason = descriptor_sensitive.descriptor_sensitive_values.reason;
                             }
-                            // log!("Teseting Descriptor Sensitive for Col No: {} is Value: {:?}", column, descriptor_sensitive);
                         } else {
                             log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
                         }
-                        log!("Desc Column for Insert: {}", column);
 
                         if !last {
                             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
@@ -213,12 +197,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
                         }
                     }
-
-                    if last {
-                        log!("Last Col");
-                    }
-
-                    log!("SQL Push: {}", insert_sql);
                 }
                 
                 // Push Generation to TABLE TRANSFORMER_RESPONSES 
