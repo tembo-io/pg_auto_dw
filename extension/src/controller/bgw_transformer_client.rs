@@ -12,6 +12,8 @@ use crate::utility::ollama_client;
 use crate::utility::guc;
 use regex::Regex;
 
+const MAX_TRANSFORMER_RETRIES: u8 = 3; // TODO: Set in GUC
+
 #[pg_guard]
 #[no_mangle]
 pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
@@ -61,45 +63,94 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let hints = "";
 
+                // Identity BK Ordinal Location
                 let mut generation_json_bk_identification: Option<serde_json::Value> = None;
-                runtime.block_on(async {
-                    // Get Generation
-                    generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
-                        Ok(response_json) => {
-                            
-                            let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                                                                .expect("Failed to convert Response JSON to Pretty String.");
+                let mut identified_business_key_opt: Option<IdentifiedBusinessKey> = None;
+                let mut retries = 0;
+                while retries < MAX_TRANSFORMER_RETRIES {
+                    runtime.block_on(async {
+                        // Get Generation
+                        generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
+                            Ok(mut response_json) => {
+                                
+                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+                                // Simulate valid but random JSON for the first attempt
+                                if retries == 0 {           
+                                    log!("Simulating valid random JSON for the first attempt.");
+                                    response_json = serde_json::json!({
+                                        "random_field": "some_value", 
+                                        "another_field": 12345
+                                    }); // Insert a valid but random JSON
+                                }
+                                Some(response_json)
+                            },
+                            Err(e) => {
+                                log!("Error in Ollama client request: {}", e);
+                                None
+                            }
+                        };
+                    });
+                    // let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
 
-                            Some(response_json)
-                        },
-                        Err(e) => {
-                            log!("Error in Ollama client request: {}", e);
-                            None
+                    match serde_json::from_value::<IdentifiedBusinessKey>(generation_json_bk_identification.clone().unwrap()) {
+                        Ok(bk) => {
+                            identified_business_key_opt = Some(bk);
+                            break; // Successfully Decoded
                         }
-                    };
-                });
+                        Err(e) => {log!("Not valid JSON: {}", e);}
+                    }
+                    retries += 1;
+                }
 
-                let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
+                let identified_business_key = match identified_business_key_opt {
+                    Some(bk) => bk,
+                    None => panic!("Failed to identify business key after {} retries", retries),
+                };
 
+                // Identity BK Name
                 let mut generation_json_bk_name: Option<serde_json::Value> = None;
-                runtime.block_on(async {
-                    // Get Generation
-                    generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
-                        Ok(response_json) => {
-                            
-                            let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                                                                .expect("Failed to convert Response JSON to Pretty String.");
+                let mut business_key_name_opt: Option<BusinessKeyName> = None;
+                let mut retries = 0;
+                while retries < MAX_TRANSFORMER_RETRIES {
+                    runtime.block_on(async {
+                        // Get Generation
+                        generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
+                            Ok(mut response_json) => {
+                                
+                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+                                // Simulate valid but random JSON for the first attempt
+                                if retries == 0 {           
+                                    log!("Simulating valid random JSON for the first attempt.");
+                                    response_json = serde_json::json!({
+                                        "random_field": "some_value", 
+                                        "another_field": 12345
+                                    }); // Insert a valid but random JSON
+                                }
+                                Some(response_json)
+                            },
+                            Err(e) => {
+                                log!("Error in Ollama client request: {}", e);
+                                None
+                            }
+                        };
+                    });
 
-                            Some(response_json)
-                        },
-                        Err(e) => {
-                            log!("Error in Ollama client request: {}", e);
-                            None
+                    match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
+                        Ok(bk) => {
+                            business_key_name_opt = Some(bk);
+                            break; // Successfully Decoded
                         }
-                    };
-                });
+                        Err(e) => {log!("Not valid JSON: {}", e);}
+                    }
+                    retries += 1;
+                }
 
-                let business_key_name: BusinessKeyName = serde_json::from_value(generation_json_bk_name.unwrap()).expect("Not valid JSON");
+                let business_key_name = match business_key_name_opt {
+                    Some(bk) => bk,
+                    None => panic!("Failed to identify business key name after {} retries", retries),
+                };
 
                 let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
                 for column in &columns {
@@ -114,8 +165,8 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 &hints).await {
                             Ok(response_json) => {
                                 
-                                let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                                                                    .expect("Failed to convert Response JSON to Pretty String.");
+                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
 
                                 Some(response_json)
                             },
@@ -209,6 +260,38 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
         
     }
 }
+
+// fn z() {
+//     let mut retries = 0;
+//     while retries < MAX_TRANSFORMER_RETRIES {
+//         runtime.block_on(async {
+//             // Get Generation
+//             generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
+//                 Ok(response_json) => {
+                    
+//                     let response_json_pretty = serde_json::to_string_pretty(&response_json)
+//                                                                         .expect("Failed to convert Response JSON to Pretty String.");
+
+//                     Some(response_json)
+//                 },
+//                 Err(e) => {
+//                     log!("Error in Ollama client request: {}", e);
+//                     None
+//                 }
+//             };
+//         });
+//         // let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
+
+//         match serde_json::from_value::<IdentifiedBusinessKey>(generation_json_bk_identification.unwrap()) {
+//             Ok(bk) => {
+//                 identified_business_key = Some(bk);
+//                 break; // Successfully Decoded
+//             }
+//             Err(e) => {log!("Not valid JSON: {}", e);}
+//         }
+//         retries += 1;
+//     }
+// }
 
 fn extract_column_numbers(json_str: &str) -> Vec<u32> {
     // Define a regex to capture the column numbers
