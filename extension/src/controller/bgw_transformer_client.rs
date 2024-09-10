@@ -72,7 +72,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     runtime.block_on(async {
                         // Get Generation
                         generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
-                            Ok(mut response_json) => {
+                            Ok(response_json) => {
                                 
                                 // TODO: Add a function to enable logging.
                                 // let response_json_pretty = serde_json::to_string_pretty(&response_json)
@@ -115,7 +115,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     runtime.block_on(async {
                         // Get Generation
                         generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
-                            Ok(mut response_json) => {
+                            Ok(response_json) => {
                                 
                                 // let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                 //                                                     .expect("Failed to convert Response JSON to Pretty String.");
@@ -163,7 +163,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                     ollama_client::PromptTemplate::DescriptorSensitive, 
                                     column, 
                                     &hints).await {
-                                Ok(mut response_json) => {
+                                Ok(response_json) => {
                                     
                                     // let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                     //                                                     .expect("Failed to convert Response JSON to Pretty String.");
