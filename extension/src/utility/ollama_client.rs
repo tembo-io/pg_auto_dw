@@ -144,7 +144,7 @@ impl PromptTemplate {
               }
             }
 
-            Now, based on the instructions and examples above, please generate the JSON output for the following input.
+            Now, based on the instructions and examples above, please generate the JSON output for the following input. {hints}
 
             JSON Source Table Object: {new_json}
             "#,
@@ -214,7 +214,7 @@ impl PromptTemplate {
               }
             }
 
-            Now, based on the instructions and examples above, please generate the JSON output for the following input.
+            Now, based on the instructions and examples above, please generate the JSON output for the following input. {hints}
 
             JSON Source Table Object: {new_json}
 
@@ -376,7 +376,7 @@ impl PromptTemplate {
               }
             }
 
-            Now, based on the instructions and examples above, please generate the appropriate JSON output only for the following JSON Source Table Object and Column No inputs. Please ensure that the JSON output adheres exactly to both the format and content structure shown in the examples above.
+            Now, based on the instructions and examples above, please generate the appropriate JSON output only for the following JSON Source Table Object and Column No inputs.  {hints}
 
             JSON Source Table Object: {new_json}
 
