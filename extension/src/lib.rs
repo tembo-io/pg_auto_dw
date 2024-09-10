@@ -49,7 +49,7 @@ fn source_include(  schema_pattern_include: &str,
 }
 
 #[pg_extern]
-fn source_exlude(   schema_pattern_exclude: &str, 
+fn source_exclude(   schema_pattern_exclude: &str, 
                     table_pattern_exclude: default!(Option<&str>, "NULL"), 
                     column_pattern_exclude: default!(Option<&str>, "NULL")) -> &'static str {
     let schema_pattern_include: &str = "a^";

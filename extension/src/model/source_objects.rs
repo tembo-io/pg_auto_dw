@@ -1,5 +1,5 @@
 use pgrx::Json as JsonValue;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer,  Serialize};
 
 #[derive(Debug)]
 pub struct SourceTablePrompt {
@@ -7,6 +7,18 @@ pub struct SourceTablePrompt {
     pub key: u32,
     pub table_column_links: JsonValue, // For linking columns to foreign keys
     pub table_details: JsonValue,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceTableDetail {
+    #[serde(rename = "Schema Name")]
+    pub schema_name: String,
+
+    #[serde(rename = "Table Name")]
+    pub table_name: String,
+
+    #[serde(rename = "Column Details")]
+    pub column_details: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,11 +29,11 @@ pub struct Response {
     pub generation: GenerationTableDetail,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationColumnDetail {
     #[serde(rename = "Category")]
     pub category: String,
-    #[serde(rename = "Business Key Name")]
+    #[serde(rename = "Business Key Name", deserialize_with = "replace_spaces_with_underscores")]
     pub business_key_name: String,
     #[serde(rename = "Column No")]
     pub column_no: i32,
@@ -31,7 +43,7 @@ pub struct GenerationColumnDetail {
     pub reason: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationTableDetail {
     #[serde(rename = "Schema Name")]
     pub schema_name: String,
@@ -53,4 +65,24 @@ pub struct ColumnLink {
 pub struct TableLinks {
     #[serde(rename = "Column Links")]
     pub column_links: Vec<ColumnLink>,
+}
+
+impl TableLinks {
+    // Method to find the pk_source_objects based on column_ordinal_position
+    pub fn find_pk_source_objects(&self, search_position: i32) -> Option<i32> {
+        for link in &self.column_links {
+            if link.column_ordinal_position == search_position {
+                return Some(link.pk_source_objects);
+            }
+        }
+        None
+    }
+}
+
+fn replace_spaces_with_underscores<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(s.replace(' ', "_"))
 }
