@@ -17,10 +17,15 @@ pub static PG_AUTO_DW_TRANSFORMER_SERVER_URL: GucSetting<Option<&CStr>> = GucSet
     CStr::from_bytes_with_nul_unchecked(b"http://localhost:11434/api/generate\0")
 }));
 
+// Default not set
+pub static PG_AUTO_DW_TRANSFORMER_SERVER_TOKEN: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+
 // Default model is "mistral"
 pub static PG_AUTO_DW_MODEL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
     CStr::from_bytes_with_nul_unchecked(b"mistral\0")
 }));
+
+
 
 // Default confidence level value is 0.8
 // pub static PG_AUTO_DW_CONFIDENCE_LEVEL: GucSetting<f64> = GucSetting::<f64>::new(0.8);
@@ -56,6 +61,15 @@ pub fn init_guc() {
     );
 
     GucRegistry::define_string_guc(
+        "pg_auto_dw.transformer_server_token",
+        "Bearer token for authenticating API calls to the Transformer Server for the pg_auto_dw extension.",
+        "The Bearer token is required for authenticating API calls to the Transformer Server when interacting with the pg_auto_dw extension.",
+        &PG_AUTO_DW_TRANSFORMER_SERVER_TOKEN,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
         "pg_auto_dw.model",
         "Transformer model for the pg_auto_dw extension.",
         "Specifies the transformer model to be used by the pg_auto_dw extension for data processing or analysis.",
@@ -83,6 +97,7 @@ pub enum PgAutoDWGuc {
     DatabaseName,
     DwSchema,
     TransformerServerUrl,
+    TransformerServerToken,
     Model,
     // ConfidenceLevel,
 }
@@ -94,6 +109,7 @@ pub fn get_guc(guc: PgAutoDWGuc) -> Option<String> {
         PgAutoDWGuc::DatabaseName => PG_AUTO_DW_DATABASE_NAME.get(),
         PgAutoDWGuc::DwSchema => PG_AUTO_DW_DW_SCHEMA.get(),
         PgAutoDWGuc::TransformerServerUrl => PG_AUTO_DW_TRANSFORMER_SERVER_URL.get(),
+        PgAutoDWGuc::TransformerServerToken => PG_AUTO_DW_TRANSFORMER_SERVER_TOKEN.get(),
         PgAutoDWGuc::Model => PG_AUTO_DW_MODEL.get(),
         // PgAutoDWGuc::ConfidenceLevel => return Some(PG_AUTO_DW_CONFIDENCE_LEVEL.get().to_string()),
     };

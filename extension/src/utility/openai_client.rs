@@ -13,7 +13,7 @@ pub struct Request {
     pub response_format: ResponseFormat,  // JSON-only response format field
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
     pub role: String,                // "user", "assistant", or "system"
     pub content: String,             // The actual prompt or message content
@@ -25,12 +25,38 @@ pub struct ResponseFormat {
     pub r#type: String,              // To ensure JSON response format
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Response {
+    pub id: String,                 // Unique identifier for the chat session
+    pub object: String,             // Object type, usually "chat.completion"
+    pub created: u64,               // Timestamp when the response was created
+    pub model: String,              // Model name used for the response
+    pub choices: Vec<Choice>,       // List of choices (contains the actual answer)
+    pub usage: Usage,               // Information about token usage
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Choice {
+    pub message: Message,           // Contains the assistant's message
+    pub finish_reason: Option<String>, // Reason for stopping (e.g., "stop")
+    pub index: usize,               // Index of the choice
+    pub logprobs: Option<serde_json::Value>, // Log probabilities (if applicable)
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Usage {
+    pub prompt_tokens: u32,         // Number of tokens in the prompt
+    pub completion_tokens: u32,     // Number of tokens in the completion
+    pub total_tokens: u32,          // Total number of tokens used
+}
+
 pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u32, hints: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
 
     let client = ClientBuilder::new().timeout(Duration::from_secs(180)).build()?; // 30 sec Default to short for some LLMS.
     
     let prompt_template = template_type.template();
-    let prompt_template = PromptTemplate::Test.template();
+    // let prompt_template = PromptTemplate::Test.template();
 
     // Inject new_json into the prompt_template'
     let column_number = col.to_string();
@@ -40,7 +66,8 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
                           .replace("{hints}", &hints);  
 
     // GUC Values for the transformer server
-    let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
+    let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set.")?;
+    let transformer_server_token = guc::get_guc(guc::PgAutoDWGuc::TransformerServerToken).ok_or("GUC: Transformer Server Token is not set.")?;
 
     let model = guc::get_guc(guc::PgAutoDWGuc::Model).ok_or("MODEL GUC is not set.")?;
     
@@ -65,11 +92,38 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
         response_format,
     };
 
-    log!("Request: {}", serde_json::to_string(&request).unwrap());
+    log!("Request URL: {}", transformer_server_url);
+    log!("Request Headers:");
+    log!("  Authorization: Bearer {}", transformer_server_token);
+    log!("  Content-Type: application/json");
+    log!("Request Body: {}", serde_json::to_string(&request).unwrap());
 
-    //Placeholder
-    let response_json: serde_json::Value = serde_json::from_str("foo")?;
-    Ok(response_json)
+    let response = client
+        .post(&transformer_server_url)  // Ensure this is updated to OpenAI's URL
+        .header("Authorization", format!("Bearer {}", transformer_server_token))  // Add Bearer token here
+        .header("Content-Type", "application/json")  // Specify JSON content type
+        .json(&request)  // Send the request body as JSON
+        .send()
+        .await?
+        .json::<Response>()  // Await the response and parse it as JSON
+        .await?;
+
+    log!("Response: {}", serde_json::to_string(&response).unwrap());
+
+    // let response_json: serde_json::Value = serde_json::to_value(&response)?;
+
+    // Extract the content string
+    let content_str = &response
+        .choices
+        .get(0)
+        .ok_or("No choices in response")?
+        .message
+        .content;
+
+    // Parse the content string into serde_json::Value
+    let content_json: serde_json::Value = serde_json::from_str(content_str)?;
+
+    Ok(content_json)
 }
 
 #[derive(Debug)]
@@ -384,7 +438,7 @@ impl PromptTemplate {
             Column No: {column_no}
 
             "#,
-            PromptTemplate::Test => r#"Why is the sky blue?"#,
+            PromptTemplate::Test => r#"Why is the sky blue? Only respond in PROPER JSON FORMAT."#,
       }
   }
 }
