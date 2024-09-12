@@ -8,7 +8,8 @@ use serde::Deserialize;
 
 use crate::queries;
 use crate::model::source_objects;
-use crate::utility::ollama_client;
+// use crate::utility::ollama_client;
+use crate::utility::openai_client;
 use crate::utility::guc;
 use regex::Regex;
 
@@ -71,12 +72,13 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 while retries < MAX_TRANSFORMER_RETRIES {
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
+                        generation_json_bk_identification = match openai_client::send_request(table_details_json_str.as_str(), openai_client::PromptTemplate::BKIdentification, &0, &hints).await {
                             Ok(response_json) => {
                                 
                                 // TODO: Add a function to enable logging.
-                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+                                let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                                                                    .expect("Failed to convert Response JSON to Pretty String.");
+                                log!("Response: {}", response_json_pretty);
                                 Some(response_json)
                             },
                             Err(e) => {
@@ -106,170 +108,170 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     None => panic!("Failed to identify business key after {} retries", retries),
                 };
 
-                // Identity BK Name
-                let mut generation_json_bk_name: Option<serde_json::Value> = None;
-                let mut business_key_name_opt: Option<BusinessKeyName> = None;
-                let mut retries = 0;
-                let mut hints = String::new();
-                while retries < MAX_TRANSFORMER_RETRIES {
-                    runtime.block_on(async {
-                        // Get Generation
-                        generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
-                            Ok(response_json) => {
+        //         // Identity BK Name
+        //         let mut generation_json_bk_name: Option<serde_json::Value> = None;
+        //         let mut business_key_name_opt: Option<BusinessKeyName> = None;
+        //         let mut retries = 0;
+        //         let mut hints = String::new();
+        //         while retries < MAX_TRANSFORMER_RETRIES {
+        //             runtime.block_on(async {
+        //                 // Get Generation
+        //                 generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
+        //                     Ok(response_json) => {
                                 
-                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
-                                Some(response_json)
-                            },
-                            Err(e) => {
-                                log!("Error in Ollama client request: {}", e);
-                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
-                                None
-                            }
-                        };
-                    });
+        //                         // let response_json_pretty = serde_json::to_string_pretty(&response_json)
+        //                         //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+        //                         Some(response_json)
+        //                     },
+        //                     Err(e) => {
+        //                         log!("Error in Ollama client request: {}", e);
+        //                         hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+        //                         None
+        //                     }
+        //                 };
+        //             });
 
-                    match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
-                        Ok(bk) => {
-                            business_key_name_opt = Some(bk);
-                            break; // Successfully Decoded
-                        }
-                        Err(e) => {
-                            log!("Error JSON JSON Structure not of type BusinessKeyName: {}", e);
-                        }
-                    }
-                    retries += 1;
-                }
+        //             match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
+        //                 Ok(bk) => {
+        //                     business_key_name_opt = Some(bk);
+        //                     break; // Successfully Decoded
+        //                 }
+        //                 Err(e) => {
+        //                     log!("Error JSON JSON Structure not of type BusinessKeyName: {}", e);
+        //                 }
+        //             }
+        //             retries += 1;
+        //         }
 
-                let business_key_name = match business_key_name_opt {
-                    Some(bk) => bk,
-                    None => panic!("Failed to identify business key name after {} retries", retries),
-                };
+        //         let business_key_name = match business_key_name_opt {
+        //             Some(bk) => bk,
+        //             None => panic!("Failed to identify business key name after {} retries", retries),
+        //         };
 
-                // Identity Descriptor - Sensitive
-                // let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
-                let mut descriptors_sensitive: HashMap<&u32, DescriptorSensitive> = HashMap::new();
-                let mut generation_json_descriptor_sensitive: Option<serde_json::Value> = None;
-                for column in &columns {
-                    let mut retries = 0;
-                    let mut hints = String::new();
-                    while retries < MAX_TRANSFORMER_RETRIES {   
-                    // Run the async block
-                        runtime.block_on(async {
-                            // Get Generation
-                            generation_json_descriptor_sensitive = 
-                                match ollama_client::send_request(
-                                    table_details_json_str.as_str(), 
-                                    ollama_client::PromptTemplate::DescriptorSensitive, 
-                                    column, 
-                                    &hints).await {
-                                Ok(response_json) => {
+        //         // Identity Descriptor - Sensitive
+        //         // let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
+        //         let mut descriptors_sensitive: HashMap<&u32, DescriptorSensitive> = HashMap::new();
+        //         let mut generation_json_descriptor_sensitive: Option<serde_json::Value> = None;
+        //         for column in &columns {
+        //             let mut retries = 0;
+        //             let mut hints = String::new();
+        //             while retries < MAX_TRANSFORMER_RETRIES {   
+        //             // Run the async block
+        //                 runtime.block_on(async {
+        //                     // Get Generation
+        //                     generation_json_descriptor_sensitive = 
+        //                         match ollama_client::send_request(
+        //                             table_details_json_str.as_str(), 
+        //                             ollama_client::PromptTemplate::DescriptorSensitive, 
+        //                             column, 
+        //                             &hints).await {
+        //                         Ok(response_json) => {
                                     
-                                    // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                    //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+        //                             // let response_json_pretty = serde_json::to_string_pretty(&response_json)
+        //                             //                                                     .expect("Failed to convert Response JSON to Pretty String.");
 
-                                    Some(response_json)
-                                },
-                                Err(e) => {
-                                    log!("Error in Ollama client request: {}", e);
-                                    hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
-                                    None
-                                }
-                            };
-                            // generation_json_descriptors_sensitive.insert(column, generation_json_descriptor_sensitive);
-                        });
+        //                             Some(response_json)
+        //                         },
+        //                         Err(e) => {
+        //                             log!("Error in Ollama client request: {}", e);
+        //                             hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+        //                             None
+        //                         }
+        //                     };
+        //                     // generation_json_descriptors_sensitive.insert(column, generation_json_descriptor_sensitive);
+        //                 });
 
-                        match serde_json::from_value::<DescriptorSensitive>(generation_json_descriptor_sensitive.clone().unwrap()) {
-                            Ok(des) => {
-                                // business_key_name_opt = Some(des);
-                                descriptors_sensitive.insert(column, des);
-                                break; // Successfully Decoded
-                            }
-                            Err(e) => {
-                                log!("Error JSON JSON Structure not of type DescriptorSensitive: {}", e);
-                            }
-                        }
+        //                 match serde_json::from_value::<DescriptorSensitive>(generation_json_descriptor_sensitive.clone().unwrap()) {
+        //                     Ok(des) => {
+        //                         // business_key_name_opt = Some(des);
+        //                         descriptors_sensitive.insert(column, des);
+        //                         break; // Successfully Decoded
+        //                     }
+        //                     Err(e) => {
+        //                         log!("Error JSON JSON Structure not of type DescriptorSensitive: {}", e);
+        //                     }
+        //                 }
 
-                        retries += 1;
-                    }
-                }
+        //                 retries += 1;
+        //             }
+        //         }
                 
-                let table_column_links = table_column_links_o.unwrap();
+        //         let table_column_links = table_column_links_o.unwrap();
 
-               // Build the SQL INSERT statement
-                let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
+        //        // Build the SQL INSERT statement
+        //         let mut insert_sql = String::from("INSERT INTO auto_dw.transformer_responses (fk_source_objects, model_name, category, business_key_name, confidence_score, reason) VALUES ");
 
-                for (index, column) in columns.iter().enumerate() {
+        //         for (index, column) in columns.iter().enumerate() {
 
-                    let last = {index == table_column_links.column_links.len() - 1};
+        //             let last = {index == table_column_links.column_links.len() - 1};
 
-                    if column == &identified_business_key.identified_business_key_values.column_no {
+        //             if column == &identified_business_key.identified_business_key_values.column_no {
 
-                        let category = "Business Key Part";
-                        let confidence_score = identified_business_key.identified_business_key_values.confidence_value * business_key_name.business_key_name_values.confidence_value;
-                        let bk_name = &business_key_name.business_key_name_values.name;
-                        let bk_identified_reason = &identified_business_key.identified_business_key_values.reason;
-                        let bk_name_reason = &business_key_name.business_key_name_values.reason;
-                        let reason = format!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
-                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-                        let model_name = model_name_owned.as_str();
+        //                 let category = "Business Key Part";
+        //                 let confidence_score = identified_business_key.identified_business_key_values.confidence_value * business_key_name.business_key_name_values.confidence_value;
+        //                 let bk_name = &business_key_name.business_key_name_values.name;
+        //                 let bk_identified_reason = &identified_business_key.identified_business_key_values.reason;
+        //                 let bk_name_reason = &business_key_name.business_key_name_values.reason;
+        //                 let reason = format!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
+        //                 let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+        //                 let model_name = model_name_owned.as_str();
 
-                        let pk_source_objects: i32;   
-                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
-                            pk_source_objects = pk_source_objects_temp;
-                        } else {
-                            println!("No match found for column_ordinal_position: {}", column);
-                            panic!()
-                        }
+        //                 let pk_source_objects: i32;   
+        //                 if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+        //                     pk_source_objects = pk_source_objects_temp;
+        //                 } else {
+        //                     println!("No match found for column_ordinal_position: {}", column);
+        //                     panic!()
+        //                 }
 
-                        if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        }
+        //                 if !last {
+        //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+        //                 } else {
+        //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+        //                 }
 
-                    } else {
+        //             } else {
 
-                        let pk_source_objects: i32; 
-                        let mut category = "Descriptor";
-                        let mut confidence_score: f64 = 1.0;
-                        let bk_name = "NA";
-                        let mut reason = "Defaulted of category 'Descriptor' maintained.".to_string();
-                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-                        let model_name = model_name_owned.as_str();
+        //                 let pk_source_objects: i32; 
+        //                 let mut category = "Descriptor";
+        //                 let mut confidence_score: f64 = 1.0;
+        //                 let bk_name = "NA";
+        //                 let mut reason = "Defaulted of category 'Descriptor' maintained.".to_string();
+        //                 let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+        //                 let model_name = model_name_owned.as_str();
                         
 
-                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
-                            pk_source_objects = pk_source_objects_temp;
-                        } else {
-                            println!("No match found for column_ordinal_position: {}", column);
-                            panic!()
-                        }
+        //                 if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+        //                     pk_source_objects = pk_source_objects_temp;
+        //                 } else {
+        //                     println!("No match found for column_ordinal_position: {}", column);
+        //                     panic!()
+        //                 }
                         
-                        if let Some(descriptor_sensitive) = descriptors_sensitive.get(&column) {
-                            if descriptor_sensitive.descriptor_sensitive_values.is_pii && (descriptor_sensitive.descriptor_sensitive_values.confidence_value > 0.5) {
-                                category = "Descriptor - Sensitive";
-                                confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
-                                reason = descriptor_sensitive.descriptor_sensitive_values.reason.clone();
-                            }
-                        } else {
-                            log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
-                        }
+        //                 if let Some(descriptor_sensitive) = descriptors_sensitive.get(&column) {
+        //                     if descriptor_sensitive.descriptor_sensitive_values.is_pii && (descriptor_sensitive.descriptor_sensitive_values.confidence_value > 0.5) {
+        //                         category = "Descriptor - Sensitive";
+        //                         confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
+        //                         reason = descriptor_sensitive.descriptor_sensitive_values.reason.clone();
+        //                     }
+        //                 } else {
+        //                     log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+        //                 }
 
-                        if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        }
-                    }
-                }
+        //                 if !last {
+        //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+        //                 } else {
+        //                     insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+        //                 }
+        //             }
+        //         }
                 
-                // Push Generation to TABLE TRANSFORMER_RESPONSES 
-                BackgroundWorker::transaction(|| {
-                    Spi::connect(|mut client| {
-                        _ = client.update(insert_sql.as_str(), None, None);
-                    })
-                });
+        //         // Push Generation to TABLE TRANSFORMER_RESPONSES 
+        //         BackgroundWorker::transaction(|| {
+        //             Spi::connect(|mut client| {
+        //                 _ = client.update(insert_sql.as_str(), None, None);
+        //             })
+        //         });
         }
         
     }

@@ -3,30 +3,25 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::utility::guc;
-
 use pgrx::prelude::*;
 
 #[derive(Serialize, Debug)]
-pub struct GenerateRequest {
-    pub model: String,
-    pub prompt: String,
-    pub format: String,
-    pub stream: bool,
-    pub options: Options,
+pub struct Request {
+    pub model: String,               // Model name for OpenAI
+    pub messages: Vec<Message>,      // List of messages for chat format
+    pub temperature: f64,            // Temperature setting
+    pub response_format: ResponseFormat,  // JSON-only response format field
 }
 
 #[derive(Serialize, Debug)]
-pub struct Options {
-  pub temperature: f64,
+pub struct Message {
+    pub role: String,                // "user", "assistant", or "system"
+    pub content: String,             // The actual prompt or message content
 }
 
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-pub struct GenerateResponse {
-    pub model: String,
-    pub created_at: String,
-    pub response: String,
-    pub done: bool,
+#[derive(Serialize, Debug)]
+pub struct ResponseFormat {
+    pub r#type: String,              // To ensure JSON response format
 }
 
 pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u32, hints: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
@@ -41,38 +36,39 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
                           .replace("{new_json}", new_json)
                           .replace("{column_no}", &column_number)
                           .replace("{hints}", &hints);  
-
-    log!("Prompt: {prompt}");
+     
+     log!("Prompt: {prompt}");
 
     // GUC Values for the transformer server
     let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
+
     let model = guc::get_guc(guc::PgAutoDWGuc::Model).ok_or("MODEL GUC is not set.")?;
+    
+    let json_type = String::from("json_object");
+    let response_format = ResponseFormat { r#type: json_type,};
 
     let temperature: f64 = 0.75;
 
-    let options: Options = Options{
-      temperature,
+    let role = String::from("user");
+
+    let message = Message {
+        role,
+        content: prompt,
     };
 
-    let request = GenerateRequest {
+    let messages = vec![message];
+
+    let request = Request {
         model,
-        prompt,
-        format: "json".to_string(),
-        stream: false,
-        options,
+        messages,
+        temperature,
+        response_format,
     };
 
-    let response = client
-        .post(&transformer_server_url)
-        .json(&request)
-        .send()
-        .await?
-        .json::<GenerateResponse>()
-        .await?;
+    log!("Request: {:?}", request);
 
-    // Deserialize
-    let response_json: serde_json::Value = serde_json::from_str(&response.response)?;
-
+    //Placeholder
+    let response_json: serde_json::Value = serde_json::from_str("foo")?;
     Ok(response_json)
 }
 
