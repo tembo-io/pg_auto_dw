@@ -21,6 +21,7 @@ pub struct Message {
 
 #[derive(Serialize, Debug)]
 pub struct ResponseFormat {
+    #[serde(rename = "type")] 
     pub r#type: String,              // To ensure JSON response format
 }
 
@@ -29,6 +30,7 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
     let client = ClientBuilder::new().timeout(Duration::from_secs(180)).build()?; // 30 sec Default to short for some LLMS.
     
     let prompt_template = template_type.template();
+    let prompt_template = PromptTemplate::Test.template();
 
     // Inject new_json into the prompt_template'
     let column_number = col.to_string();
@@ -36,8 +38,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
                           .replace("{new_json}", new_json)
                           .replace("{column_no}", &column_number)
                           .replace("{hints}", &hints);  
-     
-     log!("Prompt: {prompt}");
 
     // GUC Values for the transformer server
     let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;
@@ -65,7 +65,7 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
         response_format,
     };
 
-    log!("Request: {:?}", request);
+    log!("Request: {}", serde_json::to_string(&request).unwrap());
 
     //Placeholder
     let response_json: serde_json::Value = serde_json::from_str("foo")?;
@@ -77,6 +77,7 @@ pub enum PromptTemplate {
     BKIdentification,
     BKName,
     DescriptorSensitive,
+    Test,
 }
 
 impl PromptTemplate {
@@ -383,6 +384,7 @@ impl PromptTemplate {
             Column No: {column_no}
 
             "#,
+            PromptTemplate::Test => r#"Why is the sky blue?"#,
       }
   }
 }
