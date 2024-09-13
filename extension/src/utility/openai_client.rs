@@ -53,7 +53,7 @@ pub struct Usage {
 
 pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u32, hints: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
 
-    let client = ClientBuilder::new().timeout(Duration::from_secs(180)).build()?; // 30 sec Default to short for some LLMS.
+    let client = ClientBuilder::new().timeout(Duration::from_secs(60)).build()?; // 30 sec Default to short for some LLMS.
     
     let prompt_template = template_type.template();
     // let prompt_template = PromptTemplate::Test.template();
@@ -94,7 +94,7 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
 
     log!("Request URL: {}", transformer_server_url);
     log!("Request Headers:");
-    log!("  Authorization: Bearer {}", transformer_server_token);
+    // log!("  Authorization: Bearer {}", transformer_server_token);
     log!("  Content-Type: application/json");
     log!("Request Body: {}", serde_json::to_string(&request).unwrap());
 

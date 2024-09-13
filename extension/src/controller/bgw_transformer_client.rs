@@ -80,14 +80,13 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 Some(response_json)
                             },
                             Err(e) => {
-                                log!("Error in Ollama client request: {}", e);
+                                log!("Error in transformer request, malformed or timed out: {}", e);
                                 hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                 None
                             }
                         };
                     });
 
-                        // Check if generation_json_bk_identification is None
                     if generation_json_bk_identification.is_none() {
                         retries += 1;
                         continue; // Skip to the next iteration
@@ -127,12 +126,17 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                 Some(response_json)
                             },
                             Err(e) => {
-                                log!("Error in Ollama client request: {}", e);
+                                log!("Error in transformer request, malformed or timed out: {}", e);
                                 hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                 None
                             }
                         };
                     });
+
+                    if generation_json_bk_name.is_none() {
+                        retries += 1;
+                        continue; // Skip to the next iteration
+                    }
 
                     match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
                         Ok(bk) => {
@@ -176,13 +180,18 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                     Some(response_json)
                                 },
                                 Err(e) => {
-                                    log!("Error in Ollama client request: {}", e);
+                                    log!("Error in transformer request, malformed or timed out: {}", e);
                                     hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                     None
                                 }
                             };
                             // generation_json_descriptors_sensitive.insert(column, generation_json_descriptor_sensitive);
                         });
+
+                        if generation_json_descriptor_sensitive.is_none() {
+                            retries += 1;
+                            continue; // Skip to the next iteration
+                        }
 
                         match serde_json::from_value::<DescriptorSensitive>(generation_json_descriptor_sensitive.clone().unwrap()) {
                             Ok(des) => {
