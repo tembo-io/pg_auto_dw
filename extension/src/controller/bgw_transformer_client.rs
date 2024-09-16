@@ -8,7 +8,8 @@ use serde::Deserialize;
 
 use crate::queries;
 use crate::model::source_objects;
-use crate::utility::ollama_client;
+// use crate::utility::ollama_client;
+use crate::utility::openai_client;
 use crate::utility::guc;
 use regex::Regex;
 
@@ -61,8 +62,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let columns = extract_column_numbers(&table_details_json_str);
 
-                
-
                 // Identity BK Ordinal Location
                 let mut generation_json_bk_identification: Option<serde_json::Value> = None;
                 let mut identified_business_key_opt: Option<IdentifiedBusinessKey> = None;
@@ -71,22 +70,27 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 while retries < MAX_TRANSFORMER_RETRIES {
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_bk_identification = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKIdentification, &0, &hints).await {
-                            Ok(mut response_json) => {
+                        generation_json_bk_identification = match openai_client::send_request(table_details_json_str.as_str(), openai_client::PromptTemplate::BKIdentification, &0, &hints).await {
+                            Ok(response_json) => {
                                 
                                 // TODO: Add a function to enable logging.
-                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
+                                let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                                                                                    .expect("Failed to convert Response JSON to Pretty String.");
+                                log!("Response: {}", response_json_pretty);
                                 Some(response_json)
                             },
                             Err(e) => {
-                                log!("Error in Ollama client request: {}", e);
+                                log!("Error in transformer request, malformed or timed out: {}", e);
                                 hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                 None
                             }
                         };
                     });
-                    // let identified_business_key: IdentifiedBusinessKey = serde_json::from_value(generation_json_bk_identification.unwrap()).expect("Not valid JSON");
+
+                    if generation_json_bk_identification.is_none() {
+                        retries += 1;
+                        continue; // Skip to the next iteration
+                    }
 
                     match serde_json::from_value::<IdentifiedBusinessKey>(generation_json_bk_identification.clone().unwrap()) {
                         Ok(bk) => {
@@ -114,20 +118,25 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 while retries < MAX_TRANSFORMER_RETRIES {
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_bk_name = match ollama_client::send_request(table_details_json_str.as_str(), ollama_client::PromptTemplate::BKName, &0, &hints).await {
-                            Ok(mut response_json) => {
+                        generation_json_bk_name = match openai_client::send_request(table_details_json_str.as_str(), openai_client::PromptTemplate::BKName, &0, &hints).await {
+                            Ok(response_json) => {
                                 
                                 // let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                 //                                                     .expect("Failed to convert Response JSON to Pretty String.");
                                 Some(response_json)
                             },
                             Err(e) => {
-                                log!("Error in Ollama client request: {}", e);
+                                log!("Error in transformer request, malformed or timed out: {}", e);
                                 hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                 None
                             }
                         };
                     });
+
+                    if generation_json_bk_name.is_none() {
+                        retries += 1;
+                        continue; // Skip to the next iteration
+                    }
 
                     match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
                         Ok(bk) => {
@@ -158,12 +167,12 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                         runtime.block_on(async {
                             // Get Generation
                             generation_json_descriptor_sensitive = 
-                                match ollama_client::send_request(
+                                match openai_client::send_request(
                                     table_details_json_str.as_str(), 
-                                    ollama_client::PromptTemplate::DescriptorSensitive, 
+                                    openai_client::PromptTemplate::DescriptorSensitive, 
                                     column, 
                                     &hints).await {
-                                Ok(mut response_json) => {
+                                Ok(response_json) => {
                                     
                                     // let response_json_pretty = serde_json::to_string_pretty(&response_json)
                                     //                                                     .expect("Failed to convert Response JSON to Pretty String.");
@@ -171,13 +180,18 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                     Some(response_json)
                                 },
                                 Err(e) => {
-                                    log!("Error in Ollama client request: {}", e);
+                                    log!("Error in transformer request, malformed or timed out: {}", e);
                                     hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
                                     None
                                 }
                             };
                             // generation_json_descriptors_sensitive.insert(column, generation_json_descriptor_sensitive);
                         });
+
+                        if generation_json_descriptor_sensitive.is_none() {
+                            retries += 1;
+                            continue; // Skip to the next iteration
+                        }
 
                         match serde_json::from_value::<DescriptorSensitive>(generation_json_descriptor_sensitive.clone().unwrap()) {
                             Ok(des) => {
