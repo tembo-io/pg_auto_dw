@@ -19,13 +19,18 @@ const MAX_TRANSFORMER_RETRIES: u8 = 3; // TODO: Set in GUC
 #[no_mangle]
 pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
+    let database_name_string = guc::get_guc(guc::PgAutoDWGuc::DatabaseName);
+    let database_name_o: Option<&str> = database_name_string.as_deref();
+
     BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
-    BackgroundWorker::connect_worker_to_spi(Some("pg_auto_dw"), None);
+    BackgroundWorker::connect_worker_to_spi(database_name_o, None);
 
     // Initialize Tokio runtime
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
 
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
+
+            extension_log("BGWorker: Transformer Client", "INFO", "Beginning Transformer Background Process.");
         
             // Load Prompts into Results
             let result: Result<Vec<source_objects::SourceTablePrompt>, pgrx::spi::Error> = BackgroundWorker::transaction(|| {
@@ -287,6 +292,20 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
         }
         
     }
+}
+
+fn extension_log(process: &str, level: &str, message: &str) {
+
+    let insert_statement = format!(r#"
+                                            INSERT INTO auto_dw.log (process, level, message)
+                                            VALUES ('{}', '{}', '{}');
+                                        "#, process, level, message);
+
+    BackgroundWorker::transaction(|| {
+        Spi::connect(|mut client| {
+            _ = client.update(insert_statement.as_str(), None, None);
+        })
+    });
 }
 
 fn extract_column_numbers(json_str: &str) -> Vec<u32> {
