@@ -64,3 +64,13 @@ CREATE TABLE dv_repo (
     insert_time  TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
     schema JSON
 );
+
+DROP TABLE IF EXISTS log;
+
+CREATE TABLE log (
+    pk_log BIGSERIAL PRIMARY KEY,      
+    log_ts TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'UTC'),
+    process VARCHAR(50),
+	level VARCHAR(50),
+    message TEXT     
+);
