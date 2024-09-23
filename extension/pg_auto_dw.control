@@ -4,4 +4,3 @@ module_pathname = '$libdir/pg_auto_dw'
 relocatable = false
 superuser = true
 schema = 'auto_dw'
-requires = 'pgcrypto'
