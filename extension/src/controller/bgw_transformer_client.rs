@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use tokio::runtime::Runtime;
 use serde::Deserialize;
 
-use crate::queries;
-use crate::model::source_objects;
+use crate::model::*;
 // use crate::utility::ollama_client;
 use crate::utility::openai_client;
 use crate::utility::guc;
@@ -75,7 +74,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 while retries < MAX_TRANSFORMER_RETRIES {
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_bk_identification = match openai_client::send_request(table_details_json_str.as_str(), openai_client::PromptTemplate::BKIdentification, &0, &hints).await {
+                        generation_json_bk_identification = match openai_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKIdentification, &0, &hints).await {
                             Ok(response_json) => {
                                 
                                 // TODO: Add a function to enable logging.
@@ -123,7 +122,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                 while retries < MAX_TRANSFORMER_RETRIES {
                     runtime.block_on(async {
                         // Get Generation
-                        generation_json_bk_name = match openai_client::send_request(table_details_json_str.as_str(), openai_client::PromptTemplate::BKName, &0, &hints).await {
+                        generation_json_bk_name = match openai_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKName, &0, &hints).await {
                             Ok(response_json) => {
                                 
                                 // let response_json_pretty = serde_json::to_string_pretty(&response_json)
@@ -174,7 +173,7 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             generation_json_descriptor_sensitive = 
                                 match openai_client::send_request(
                                     table_details_json_str.as_str(), 
-                                    openai_client::PromptTemplate::DescriptorSensitive, 
+                                    prompt_template::PromptTemplate::DescriptorSensitive, 
                                     column, 
                                     &hints).await {
                                 Ok(response_json) => {

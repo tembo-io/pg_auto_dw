@@ -5,6 +5,9 @@ mod utility;    // Initialization, Configuration Management, and External Servic
 pub use pgrx::prelude::*;
 use uuid::Uuid;
 
+use sha2::{Sha256, Digest};
+use hex;
+
 pgrx::pg_module_magic!();
 
 use model::queries;
@@ -132,6 +135,14 @@ fn source_column() -> Result<
             .collect::<Vec<_>>())
     })
     .map(TableIterator::new)
+}
+
+#[pg_extern]
+fn hash(inputs: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(inputs.as_bytes());
+    let digest = hasher.finalize();
+    hex::encode(digest)
 }
 
 #[cfg(any(test, feature = "pg_test"))]

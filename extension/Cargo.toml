@@ -26,6 +26,8 @@ uuid = { version = "1.1", features = ["v4", "v5", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0"
 regex = "1.7"
+sha2 = "0.10"
+hex = "0.4"
 
 [dev-dependencies]
 pgrx-tests = "=0.11.4"

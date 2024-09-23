@@ -118,14 +118,14 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
             FROM {}.hub_{}
             )
             SELECT
-                ENCODE(PUBLIC.DIGEST(ARRAY_TO_STRING(ARRAY[-1], ',')::TEXT, 'sha256'), 'hex') AS hub_{}_hk,
+                auto_dw.hash(ARRAY_TO_STRING(ARRAY[-1], ',')::TEXT) AS hub_{}_hk,
                 '0001-01-01'::TIMESTAMP WITHOUT TIME ZONE AS load_ts, 
                 'SYSTEM'::TEXT AS record_source
                 {}
                 FROM initialized WHERE NOT initialized.is_initialized
             UNION
             SELECT
-                ENCODE(PUBLIC.DIGEST(ARRAY_TO_STRING(ARRAY[-2], ',')::TEXT, 'sha256'), 'hex') AS hub_{}_hk,
+                auto_dw.hash(ARRAY_TO_STRING(ARRAY[-2], ',')::TEXT) AS hub_{}_hk,
                 '0001-01-01'::TIMESTAMP WITHOUT TIME ZONE AS load_ts,
                 'SYSTEM'::TEXT AS record_source
                 {}
@@ -168,10 +168,9 @@ fn dv_data_loader_hub_dml (dv_schema: &DVSchema) -> String {
             WITH
             stg_data AS (
             SELECT
-                ENCODE(
-                    public.DIGEST(
-                        ARRAY_TO_STRING(
-                            ARRAY[{}], ','), 'sha256'), 'hex') AS hub_{}_hk,
+                auto_dw.hash(
+                            ARRAY_TO_STRING(ARRAY[{}], ',')
+                        ) AS hub_{}_hk,
                 (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::TIMESTAMP(6) AS load_ts,
                 '{}' AS record_source{}
             FROM {}.{} AS stg
@@ -330,14 +329,12 @@ fn dv_data_loader_sat_dml (dv_schema: &DVSchema) -> String {
                 WITH stg AS (
                 SELECT 
                     *,
-                    ENCODE(
-                        {source_schema_name}.DIGEST(
-                            ARRAY_TO_STRING(
-                                ARRAY[{hub_bk_parts_sql_stg_array}], ','), 'sha256'), 'hex') AS hub_{business_key_name}_hk,
-                    ENCODE(
-                            {source_schema_name}.DIGEST(
-                                ARRAY_TO_STRING(
-                                    ARRAY[{sat_source_sql_array}], ','), 'sha256'), 'hex') AS sat_{key}_hd
+                    auto_dw.hash(
+                        ARRAY_TO_STRING(ARRAY[{hub_bk_parts_sql_stg_array}], ',')
+                    ) AS hub_{business_key_name}_hk,
+                    auto_dw.hash(
+                        ARRAY_TO_STRING(ARRAY[{sat_source_sql_array}], ',')
+                    ) AS sat_{key}_hd
                     FROM {source_schema_name}.{source_table_name} AS stg
                 ),
                 new_stg_data AS (  
