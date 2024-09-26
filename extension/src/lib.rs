@@ -137,11 +137,9 @@ fn source_column() -> Result<
     .map(TableIterator::new)
 }
 
-#[pg_extern]
-fn hash(inputs: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(inputs.as_bytes());
-    let digest = hasher.finalize();
+#[pg_extern(immutable, parallel_safe)]
+fn hash(input: &str) -> String {
+    let digest = Sha256::digest(input.as_bytes());
     hex::encode(digest)
 }
 
