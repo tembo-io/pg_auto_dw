@@ -75,11 +75,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                         // Get Generation
                         generation_json_bk_identification = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKIdentification, &0, &hints).await {
                             Ok(response_json) => {
-                                
-                                // TODO: Add a function to enable logging.
-                                let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                                                                    .expect("Failed to convert Response JSON to Pretty String.");
-                                log!("Response: {}", response_json_pretty);
                                 Some(response_json)
                             },
                             Err(e) => {
