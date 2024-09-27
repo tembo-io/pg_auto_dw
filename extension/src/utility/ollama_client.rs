@@ -5,8 +5,6 @@ use std::time::Duration;
 use crate::utility::guc;
 use crate::model::prompt_template::PromptTemplate;
 
-use pgrx::prelude::*;
-
 #[derive(Serialize, Debug)]
 pub struct GenerateRequest {
     pub model: String,
@@ -42,8 +40,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
                           .replace("{new_json}", new_json)
                           .replace("{column_no}", &column_number)
                           .replace("{hints}", &hints);  
-
-    log!("Prompt: {prompt}");
 
     // GUC Values for the transformer server
     let transformer_server_url = guc::get_guc(guc::PgAutoDWGuc::TransformerServerUrl).ok_or("GUC: Transformer Server URL is not set")?;

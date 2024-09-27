@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use crate::utility::guc;
 use crate::model::prompt_template::PromptTemplate;
-use pgrx::prelude::*;
 
 #[derive(Serialize, Debug)]
 pub struct Request {
@@ -93,12 +92,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
         response_format,
     };
 
-    log!("Request URL: {}", transformer_server_url);
-    log!("Request Headers:");
-    // log!("  Authorization: Bearer {}", transformer_server_token);
-    log!("  Content-Type: application/json");
-    log!("Request Body: {}", serde_json::to_string(&request).unwrap());
-
     let response = client
         .post(&transformer_server_url)  // Ensure this is updated to OpenAI's URL
         .header("Authorization", format!("Bearer {}", transformer_server_token))  // Add Bearer token here
@@ -108,10 +101,6 @@ pub async fn send_request(new_json: &str, template_type: PromptTemplate, col: &u
         .await?
         .json::<Response>()  // Await the response and parse it as JSON
         .await?;
-
-    log!("Response: {}", serde_json::to_string(&response).unwrap());
-
-    // let response_json: serde_json::Value = serde_json::to_value(&response)?;
 
     // Extract the content string
     let content_str = &response

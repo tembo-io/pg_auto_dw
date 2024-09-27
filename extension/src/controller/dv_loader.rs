@@ -26,7 +26,6 @@ pub fn dv_load_schema_from_build_id(build_id: &String) -> Option<DVSchema> {
                     let deserialized_schema: Result<DVSchema, serde_json::Error> = serde_json::from_value(schema_json.0);
                     match deserialized_schema {
                         Ok(deserialized_schema) => {
-                            // log!("Schema deserialized correctly: JSON{:?}", &deserialized_schema);
                             schema_result = Some(deserialized_schema);
                         },
                         Err(_) => {
@@ -55,7 +54,7 @@ pub fn dv_data_loader(dv_schema: &DVSchema) {
 
     // Run SQL
     let dv_dml = hub_dml + &sat_dml;
-    // log!("DV DML: {}", &dv_dml);
+    
     // Build Tables using DDL
     Spi::connect( |mut client| {
         // client.select(dv_objects_query, None, None);

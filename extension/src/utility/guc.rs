@@ -12,6 +12,11 @@ pub static PG_AUTO_DW_DATABASE_NAME: GucSetting<Option<&CStr>> = GucSetting::<Op
 // Default not set, as this will make direct changes to the database
 pub static PG_AUTO_DW_DW_SCHEMA: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
+// Default set to Ollama
+pub static PG_AUTO_DW_TRANSFORMER_SERVER_TYPE: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
+    CStr::from_bytes_with_nul_unchecked(b"ollama\0")
+}));
+
 // Default Transformer Server URL
 pub static PG_AUTO_DW_TRANSFORMER_SERVER_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
     CStr::from_bytes_with_nul_unchecked(b"http://localhost:11434/api/generate\0")
@@ -24,8 +29,6 @@ pub static PG_AUTO_DW_TRANSFORMER_SERVER_TOKEN: GucSetting<Option<&CStr>> = GucS
 pub static PG_AUTO_DW_MODEL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(Some(unsafe {
     CStr::from_bytes_with_nul_unchecked(b"mistral\0")
 }));
-
-
 
 // Default confidence level value is 0.8
 // pub static PG_AUTO_DW_CONFIDENCE_LEVEL: GucSetting<f64> = GucSetting::<f64>::new(0.8);
@@ -47,6 +50,15 @@ pub fn init_guc() {
         "Data warehouse schema for the pg_auto_dw extension.",
         "Specifies the name of the schema within the database where the pg_auto_dw extension will automatically create and store data warehouse components.",
         &PG_AUTO_DW_DW_SCHEMA,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "pg_auto_dw.transformer_server_type",
+        "Transformer server type for the pg_auto_dw extension.",
+        "Specifies the server type used by the pg_auto_dw extension.  Current available server types include, ollama and openai.",
+        &PG_AUTO_DW_TRANSFORMER_SERVER_TYPE,
         GucContext::Suset,
         GucFlags::default(),
     );
@@ -96,6 +108,7 @@ pub fn init_guc() {
 pub enum PgAutoDWGuc {
     DatabaseName,
     DwSchema,
+    TransformerServerType,
     TransformerServerUrl,
     TransformerServerToken,
     Model,
@@ -108,6 +121,7 @@ pub fn get_guc(guc: PgAutoDWGuc) -> Option<String> {
     let val = match guc {
         PgAutoDWGuc::DatabaseName => PG_AUTO_DW_DATABASE_NAME.get(),
         PgAutoDWGuc::DwSchema => PG_AUTO_DW_DW_SCHEMA.get(),
+        PgAutoDWGuc::TransformerServerType => PG_AUTO_DW_TRANSFORMER_SERVER_TYPE.get(),
         PgAutoDWGuc::TransformerServerUrl => PG_AUTO_DW_TRANSFORMER_SERVER_URL.get(),
         PgAutoDWGuc::TransformerServerToken => PG_AUTO_DW_TRANSFORMER_SERVER_TOKEN.get(),
         PgAutoDWGuc::Model => PG_AUTO_DW_MODEL.get(),

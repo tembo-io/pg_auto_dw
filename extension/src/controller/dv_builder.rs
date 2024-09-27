@@ -159,8 +159,6 @@ pub fn build_dv(build_id: &String, dv_objects_query: &str) {
         dv_ddl_sql.push_str(&dv_business_key_ddl_sql);
     }
 
-    // log!("DDL Full: {}", &dv_ddl_sql);
-
     // Build Tables using DDL
     Spi::connect( |mut client| {
             _ = client.update(&dv_ddl_sql, None, None);
