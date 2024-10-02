@@ -3,6 +3,7 @@ mod model;      // Defines data structures and data-related methods.
 mod utility;    // Initialization, Configuration Management, and External Services
 
 pub use pgrx::prelude::*;
+use utility::guc;
 use uuid::Uuid;
 
 use sha2::{Sha256, Digest};
@@ -14,6 +15,12 @@ use model::queries;
 
 #[pg_extern(name="go")]
 fn go_default() -> String {
+    let accepted_transformer_confidence_level: String = 
+        // utility::guc::get_guc(guc::PgAutoDWGuc::AcceptedTransformerConfidenceLevel).unwrap();
+        utility::guc::get_guc(guc::PgAutoDWGuc::AcceptedTransformerConfidenceLevel)
+            .unwrap_or_else(|| {
+                error!("GUC: Unable to obtain parameter \"pg_auto_dw.accepted_transformer_confidence_level.\"");
+            });
     let build_id = Uuid::new_v4();
     let message = format!("Build ID: {} | Data warehouse tables are currently being built.", build_id);
     info!("{}", message);
@@ -21,7 +28,8 @@ fn go_default() -> String {
     let build_flag = "Build";
     let build_status = "RTD";
     let status = "Ready to Deploy";
-    let query_insert = &queries::insert_into_build_call(&build_id, &build_flag, &build_status, &status);
+    let query_insert = &queries::insert_into_build_call(
+        &build_id, &build_flag, &build_status, &status, &accepted_transformer_confidence_level);
     _ = Spi::run(query_insert);
     let query_build_pull = &queries::build_object_pull(&build_id);
     controller::dv_builder::build_dv(&build_id, query_build_pull);
@@ -118,7 +126,13 @@ fn source_column() -> Result<
     >,
     spi::Error,
 > {
-    let query: &str = queries::SOURCE_COLUMN;
+    let accepted_transformer_confidence_level: String = 
+        utility::guc::get_guc(guc::PgAutoDWGuc::AcceptedTransformerConfidenceLevel)
+            .unwrap_or_else(|| {
+                error!("GUC: Unable to obtain parameter \"pg_auto_dw.accepted_transformer_confidence_level.\"");
+            });
+
+    let query: &str = &queries::source_coumn(&accepted_transformer_confidence_level);
 
     info!("Evaluation of TABLE customer");
     Spi::connect(|client| {
