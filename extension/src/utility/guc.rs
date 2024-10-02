@@ -30,7 +30,6 @@ pub static PG_AUTO_DW_MODEL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CS
 // The accepted transformer's, self-described, confidence level - default 0.8.
 pub static PG_AUTO_DW_ACCEPTED_TRANSFORMER_CONFIDENCE_LEVEL: GucSetting<f64> = GucSetting::<f64>::new(0.8);
 
-
 pub fn init_guc() {
     // Register the GUCs
     GucRegistry::define_string_guc(
@@ -112,9 +111,10 @@ pub enum PgAutoDWGuc {
     AcceptedTransformerConfidenceLevel,
 }
 
+
 // A convenience function to get this project's GUCs
 pub fn get_guc(guc: PgAutoDWGuc) -> Option<String> {
-    match guc {
+    match guc { 
         PgAutoDWGuc::DatabaseName => cstr_option_to_string(PG_AUTO_DW_DATABASE_NAME.get()),
         PgAutoDWGuc::DwSchema => cstr_option_to_string(PG_AUTO_DW_DW_SCHEMA.get()),
         PgAutoDWGuc::TransformerServerType => cstr_option_to_string(PG_AUTO_DW_TRANSFORMER_SERVER_TYPE.get()),
@@ -126,7 +126,8 @@ pub fn get_guc(guc: PgAutoDWGuc) -> Option<String> {
 }
 
 fn cstr_option_to_string(cstr_o: Option<&CStr>) -> Option<String> {
-    cstr_o.and_then(|cstr| cstr.to_str().ok().map(|s| s.to_owned()))
+    cstr_o
+        .and_then(|cstr| cstr.to_str().ok().map(|s| s.to_owned()))
 }
 
 fn cstr_from_float(val: f64) -> Option<String> {
