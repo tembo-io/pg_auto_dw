@@ -326,60 +326,79 @@ pub fn insert_into_build_call(
 ) -> String {
     format!(r#"
     INSERT INTO auto_dw.build_call (fk_transformer_responses, build_id, build_flag, build_status)
-    WITH
-    source_objects_tranformation_cal AS (
-        SELECT 
-            MAX(pk_transformer_responses)AS max_pk_transformer_response
-        FROM auto_dw.transformer_responses AS t
-        GROUP BY fk_source_objects
-    ),
-    source_object_transformation_latest AS (
-        SELECT t.* FROM auto_dw.transformer_responses AS t
-        JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
-    ),
-    sour_object_status AS (
-        SELECT 
-            t.pk_transformer_responses,
-            s.schema_name::TEXT AS schema, 
-            s.table_name::TEXT AS table, 
-            s.column_name::TEXT AS column,
-            CASE
-                WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                WHEN t.confidence_score >= {accepted_transformer_confidence_level} THEN 'Ready to Deploy'
-                ELSE 'Requires Attention'
-            END AS status,
-            CASE 
-                WHEN t.confidence_score IS NOT NULL THEN CONCAT((t.confidence_score * 100)::INT::TEXT, '%')
-                ELSE '-'
-            END AS confidence_level,
-            CASE 
-                WHEN t.confidence_score IS NOT NULL THEN 
-                    (
-                    'Status: ' ||
-                    CASE
-                        WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                        WHEN t.confidence_score >= {accepted_transformer_confidence_level} THEN 'Ready to Deploy'
-                        ELSE 'Requires Attention'
-                    END || ': ' ||
-                    'Model: ' || model_name || 
-                    ' categorized this column as a ' || category || 
-                    ' with a confidence of ' || CONCAT((t.confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
-                    'Model Reasoning: ' || t.reason
-                    )
-                ELSE '-'
-            END AS status_response
-        FROM auto_dw.source_objects AS s
-        LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
-        WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
-        ORDER BY s.schema_name, s.table_name, s.column_ordinal_position
-        )
-    SELECT 
-        pk_transformer_responses AS fk_transformer_responses,
-        '{build_id}' AS build_id,
-        '{build_flag}' AS build_flag,
-        '{build_status}' AS build_status
-    FROM sour_object_status
-    WHERE status = '{status}';
+	WITH
+	confidence_level AS (SELECT {accepted_transformer_confidence_level} AS value),
+	source_objects_tranformation_cal AS (
+		SELECT 
+			MAX(pk_transformer_responses)AS max_pk_transformer_response
+		FROM auto_dw.transformer_responses AS t
+		GROUP BY fk_source_objects
+	),
+	source_object_transformation_latest AS (
+		SELECT t.* FROM auto_dw.transformer_responses AS t
+		JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
+	),
+	source_object_status_prep AS (
+		SELECT 
+			t.pk_transformer_responses,
+			s.schema_name,
+			s.table_name,
+			s.column_name,
+			s.column_ordinal_position,
+			t.confidence_score,
+			t.reason,
+			t.category,
+			t.model_name,
+			MAX(
+			CASE
+				WHEN t.category = 'Business Key Part' AND t.confidence_score < cl.value THEN 1
+				ELSE 0 				  
+			END
+			) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold
+		FROM auto_dw.source_objects AS s
+		JOIN confidence_level AS cl ON true
+		LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
+		WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
+	),
+	source_object AS (
+		SELECT *,
+				CASE
+					WHEN confidence_score IS NULL THEN 'Queued for Processing'
+					WHEN category = 'Business Key Part' AND confidence_score >= cl.value THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 THEN 'Ready to Deploy - Awaiting Business Key (BK)'
+					ELSE 'Requires Attention'
+				END AS status,
+				CASE 
+					WHEN confidence_score IS NOT NULL THEN CONCAT((confidence_score * 100)::INT::TEXT, '%')
+					ELSE '-'
+				END AS confidence_level,
+				CASE 
+					WHEN confidence_score IS NOT NULL THEN 
+						(
+						'Status: ' ||
+						CASE
+							WHEN confidence_score IS NULL THEN 'Queued for Processing'
+							WHEN confidence_score >= cl.value THEN 'Ready to Deploy'
+							ELSE 'Requires Attention'
+						END || ': ' ||
+						'Model: ' || model_name || 
+						' categorized this column as a ' || category || 
+						' with a confidence of ' || CONCAT((confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+						'Model Reasoning: ' || reason
+						)
+					ELSE '-'
+				END AS status_response
+		FROM source_object_status_prep
+		JOIN confidence_level AS cl ON true
+	)
+	SELECT 
+		pk_transformer_responses AS fk_transformer_responses,
+		'{build_id}' AS build_id,
+		'{build_flag}' AS build_flag,
+		'{build_status}' AS build_status
+	FROM source_object
+	WHERE status = '{status}';
 "#)
 }
 
@@ -407,56 +426,84 @@ pub fn build_object_pull(build_id: &str) -> String {
 }
 
 #[no_mangle]
-pub fn source_coumn(accepted_transformer_confidence_level: &str) -> String {
+pub fn source_column(accepted_transformer_confidence_level: &str) -> String {
     format!(r#"
         WITH
-        source_objects_tranformation_cal AS (
-            SELECT 
-                MAX(pk_transformer_responses)AS max_pk_transformer_response
-            FROM auto_dw.transformer_responses AS t
-            GROUP BY fk_source_objects
-        ),
-        source_object_transformation_latest AS (
-            SELECT t.* FROM auto_dw.transformer_responses AS t
-            JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
-        )
-        SELECT 
-            s.schema_name::TEXT AS schema, 
-            s.table_name::TEXT AS table, 
-            s.column_name::TEXT AS column,
-            CASE
-                WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                WHEN t.confidence_score >= {accepted_transformer_confidence_level} THEN 'Ready to Deploy'
-                ELSE 'Requires Attention'
-            END AS status,
-            CASE 
-                WHEN t.confidence_score IS NOT NULL THEN CONCAT((t.confidence_score * 100)::INT::TEXT, '%')
-                ELSE '-'
-            END AS confidence_level,
-            CASE 
-                WHEN t.confidence_score IS NOT NULL THEN 
-                    (
-                    'Status: ' ||
-                    CASE
-                        WHEN t.confidence_score IS NULL THEN 'Queued for Processing'
-                        WHEN t.confidence_score >= {accepted_transformer_confidence_level} THEN 'Ready to Deploy'
-                        ELSE 'Requires Attention'
-                    END || ': ' ||
-                    'Model: ' || model_name || 
-                    ' categorized this column as a ' || category || 
-                    ' with a confidence of ' || CONCAT((t.confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+		confidence_level AS (SELECT {accepted_transformer_confidence_level} AS value),
+		source_objects_tranformation_cal AS (
+			SELECT 
+				MAX(pk_transformer_responses)AS max_pk_transformer_response
+			FROM auto_dw.transformer_responses AS t
+			GROUP BY fk_source_objects
+		),
+		source_object_transformation_latest AS (
+			SELECT t.* FROM auto_dw.transformer_responses AS t
+			JOIN source_objects_tranformation_cal AS c ON t.pk_transformer_responses = c.max_pk_transformer_response
+		),
+		source_object_status_prep AS (
+			SELECT 
+				t.pk_transformer_responses,
+				s.schema_name,
+				s.table_name,
+				s.column_name,
+				s.column_ordinal_position,
+				t.confidence_score,
+				t.reason,
+				t.category,
+				t.model_name,
+				MAX(
+				CASE
+					WHEN t.category = 'Business Key Part' AND t.confidence_score < cl.value THEN 1
+					ELSE 0 				  
+				END
+				) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold
+			FROM auto_dw.source_objects AS s
+			JOIN confidence_level AS cl ON true
+			LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
+			WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
+		),
+		source_object AS (
+			SELECT *,
 					CASE
-						WHEN t.business_key_name <> 'NA' THEN 'Further, Business Key Part has been associated with Business Key ' ||  UPPER(t.business_key_name) || '.  '
-						ELSE ''
-					END ||
-                    'Model Reasoning: ' || t.reason
-                    )
-                ELSE '-'
-            END AS status_response
-        FROM auto_dw.source_objects AS s
-        LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
-        WHERE s.current_flag = 'Y' AND s.deleted_flag = 'N'
-        ORDER BY s.schema_name, s.table_name, s.column_ordinal_position;
+						WHEN confidence_score IS NULL THEN 'Queued for Processing'
+						WHEN category = 'Business Key Part' AND confidence_score >= cl.value THEN 'Ready to Deploy'
+						WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 THEN 'Ready to Deploy'
+						WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 THEN 'Ready to Deploy - Awaiting Business Key (BK)'
+						ELSE 'Requires Attention'
+					END AS status,
+					CASE 
+						WHEN confidence_score IS NOT NULL THEN CONCAT((confidence_score * 100)::INT::TEXT, '%')
+						ELSE '-'
+					END AS confidence_level,
+					CASE 
+						WHEN confidence_score IS NOT NULL THEN 
+							(
+							'Status: ' ||
+							CASE
+								WHEN confidence_score IS NULL THEN 'Queued for Processing'
+								WHEN confidence_score >= cl.value THEN 'Ready to Deploy'
+								ELSE 'Requires Attention'
+							END || ': ' ||
+							'Model: ' || model_name || 
+							' categorized this column as a ' || category || 
+							' with a confidence of ' || CONCAT((confidence_score * 100)::INT::TEXT, '%') || '.  ' ||
+							'Model Reasoning: ' || reason
+							)
+						ELSE '-'
+					END AS status_response
+			FROM source_object_status_prep
+			JOIN confidence_level AS cl ON true
+		)
+		SELECT 
+		schema_name::TEXT AS schema,
+		table_name::TEXT AS table,
+		column_name::TEXT AS column,
+		status,
+		confidence_level,
+		status_response
+		FROM source_object
+		ORDER BY schema_name, table_name, column_ordinal_position
+		;
 		"#)
 }
 

@@ -1,6 +1,6 @@
 [extension]
 name = "pg_auto_dw"
-version = "0.0.1"
+version = "0.0.2"
 repository = "https://github.com/tembo-io/pg_auto_dw"
 license = "PostgreSQL"
 description = "An auto data warehouse extension for Postgres."

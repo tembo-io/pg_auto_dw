@@ -132,7 +132,7 @@ fn source_column() -> Result<
                 error!("GUC: Unable to obtain parameter \"pg_auto_dw.accepted_transformer_confidence_level.\"");
             });
 
-    let query: &str = &queries::source_coumn(&accepted_transformer_confidence_level);
+    let query: &str = &queries::source_column(&accepted_transformer_confidence_level);
 
     info!("Evaluation of TABLE customer");
     Spi::connect(|client| {
