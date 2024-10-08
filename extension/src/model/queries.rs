@@ -407,7 +407,7 @@ pub fn build_object_pull(build_id: &str) -> String {
 }
 
 #[no_mangle]
-pub fn source_coumn(accepted_transformer_confidence_level: &str) -> String {
+pub fn source_column(accepted_transformer_confidence_level: &str) -> String {
     format!(r#"
         WITH
         source_objects_tranformation_cal AS (
