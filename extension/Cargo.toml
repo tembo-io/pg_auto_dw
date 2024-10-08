@@ -1,7 +1,7 @@
 [package]
-name = "pg_auto_dw"
-version = "0.0.1"
-edition = "2021"
+name = "pg_auto_dw" # Extension name
+version = "0.0.2" # Extension version (SemVer: MAJOR.MINOR.PATCH)
+edition = "2021" # Rust 2021 edition
 
 [lib]
 crate-type = ["cdylib"]
