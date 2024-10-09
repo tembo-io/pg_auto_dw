@@ -218,7 +218,11 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     if column == &identified_business_key.identified_business_key_values.column_no {
 
                         let category = "Business Key Part";
-                        let confidence_score = identified_business_key.identified_business_key_values.confidence_value * business_key_name.business_key_name_values.confidence_value;
+                        // Calculate the overall confidence score by taking the minimum of the confidence values
+                        // for the identified business key and the business key name. This approach is chosen to 
+                        // ensure that the overall confidence reflects the weakest link, avoiding inflation of 
+                        // the confidence score when one value is significantly lower than the other.
+                        let confidence_score = identified_business_key.identified_business_key_values.confidence_value.min(business_key_name.business_key_name_values.confidence_value);
                         let bk_name = &business_key_name.business_key_name_values.name;
                         let bk_identified_reason = &identified_business_key.identified_business_key_values.reason;
                         let bk_name_reason = &business_key_name.business_key_name_values.reason;
