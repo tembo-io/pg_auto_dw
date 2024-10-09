@@ -88,7 +88,7 @@ table_qry AS (
 	LEFT JOIN pg_catalog.pg_description ON 	pg_class.oid = pg_description.objoid AND 
 											pg_description.objsubid = 0 -- No Sub Objects
 	WHERE 
-		pg_class.relkind = 'r'  -- 'r' stands for ordinary table
+		pg_class.relkind IN  ('r', 'f')  -- 'r' stands for ordinary table, 'f' stands for foreign data wrapper
 ),
 column_qry AS (
 	SELECT 
@@ -534,7 +534,7 @@ pub fn get_column_data(schema_name: &str, table_name: &str, column_name: &str) -
 			LEFT JOIN pg_catalog.pg_description ON 	pg_class.oid = pg_description.objoid AND 
 													pg_description.objsubid = 0 -- No Sub Objects
 			WHERE 
-				pg_class.relkind = 'r'  -- 'r' stands for ordinary table
+				pg_class.relkind IN  ('r', 'f')  -- 'r' stands for ordinary table, 'f' stands for foreign data wrapper
 		),
 		column_qry AS (
 			SELECT 
