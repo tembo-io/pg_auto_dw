@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub enum PromptTemplate {
+    HubLinkClassification,
     BKIdentification,
     BKName,
     DescriptorSensitive,
@@ -8,6 +9,69 @@ pub enum PromptTemplate {
 impl PromptTemplate {
   pub fn template(&self) -> &str {
       match self {
+          PromptTemplate::HubLinkClassification => r#"
+            Task Title: Hub and Link Classification in JSON Source Table Object
+
+            You have a JSON Source Table Object that includes the schema name, table name, and detailed column information. Your responses to requested tasks will be used to help classify the source table as part of the data vault structure.
+
+            Requested Task:
+
+            Classify the source table as either a Hub or Link structure based on the column details provided. Additionally, provide a confidence value for your classification.
+
+            Confidence Value:
+
+            Provide a score between 0 and 1, rounded to two decimal places, representing your confidence in the classification. A value of 0.80 or higher is considered reasonably confident.
+
+            Reason:
+
+            Indicate why you made the classification decision you did.
+
+            Output:
+
+            Ensure the output conforms to the format shown in the examples below.
+
+            Example Input 1)
+            {
+              "Schema Name": "public",
+              "Table Name": "customer",
+              "Column Details": [
+                "Column No: 1 Named: customer_id of type: uuid And is a primary key. Column Comments: NA",
+                "Column No: 2 Named: city of type: character varying(255) Column Comments: NA",
+                "Column No: 3 Named: state of type: character(2) Column Comments: NA",
+                "Column No: 4 Named: zip of type: character varying(10) Column Comments: NA"
+              ]
+            }
+
+            Example Output 1)
+            {
+              "Classification": "Hub",
+              "Confidence Value": 0.92,
+              "Reason": "The 'customer_id' column is a primary key, and the table contains attributes likely describing a core entity, making it suitable for a Hub classification."
+            }
+
+            Example Input 2)
+            {
+              "Schema Name": "sales",
+              "Table Name": "order_details",
+              "Column Details": [
+                "Column No: 1 Named: order_id of type: integer Column Comments: NA",
+                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
+                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
+                "Column No: 4 Named: order_date of type: date Column Comments: NA"
+              ]
+            }
+
+            Example Output 2)
+            {
+              "Classification": "Link",
+              "Confidence Value": 0.85,
+              "Reason": "The 'order_id' and 'product_id' columns suggest a relationship between multiple tables, making this table a strong candidate for a Link classification."
+            }
+
+            Now, based on the instructions and examples above, please generate the appropriate JSON output only for the following JSON Source Table Object.  {hints}
+
+            JSON Source Table Object: {new_json}
+          "#,
           PromptTemplate::BKIdentification => r#"
             Task Title: Business Key Identification in JSON Source Table Object
 
