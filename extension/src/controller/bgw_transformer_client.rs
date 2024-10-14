@@ -65,6 +65,47 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let columns = extract_column_numbers(&table_details_json_str);
 
+                // Table as Hub or Link Classification
+                let mut generation_json_table_classification: Option<serde_json::Value> = None;
+                let mut table_classification_opt: Option<TableClassification> = None;
+                let mut retries = 0;
+                let mut hints = String::new();
+                while retries < MAX_TRANSFORMER_RETRIES {
+                    runtime.block_on(async {
+                        // Get Generation
+                        generation_json_table_classification = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::HubLinkClassification, &0, &hints).await {
+                            Ok(response_json) => {
+                                Some(response_json)
+                            },
+                            Err(e) => {
+                                log!("Error in transformer request, malformed or timed out: {}", e);
+                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+                                None
+                            }
+                        };
+                    });
+
+                    if generation_json_table_classification.is_none() {
+                        retries += 1;
+                        continue; // Skip to the next iteration
+                    }
+
+                    match serde_json::from_value::<TableClassification>(generation_json_table_classification.clone().unwrap()) {
+                        Ok(bk) => {
+                            table_classification_opt = Some(bk);
+                            log!("Table Classification {:?}", table_classification_opt);
+                            break; // Successfully Decoded
+                        }
+                        Err(e) => {
+                            log!("Error JSON JSON Structure not of type IdentifiedBusinessKey: {}", e);
+                            hints = format!("Hint: Please ensure the correct JSON key pair structure is given.  Previously you gave a response but it errored.  Error: {e}. Please try again.");
+                        }
+                    }
+                    retries += 1;
+                }
+
+
+
                 // Identity BK Ordinal Location
                 let mut generation_json_bk_identification: Option<serde_json::Value> = None;
                 let mut identified_business_key_opt: Option<IdentifiedBusinessKey> = None;
@@ -313,6 +354,28 @@ fn extract_column_numbers(json_str: &str) -> Vec<u32> {
     re.captures_iter(json_str)
         .filter_map(|caps| caps.get(1).map(|m| m.as_str().parse::<u32>().unwrap()))
         .collect()
+}
+
+#[derive(Deserialize, Debug)]
+struct TableClassification {
+    #[serde(rename = "Table Classification")]
+    categorized_table: TableClassificationValues,
+}
+
+#[derive(Deserialize, Debug)]
+struct TableClassificationValues {
+    #[serde(rename = "Classification")]
+    classification: TableClassificationType,
+    #[serde(rename = "Confidence Value")]
+    confidence_value: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
+}
+
+#[derive(Deserialize, Debug)]
+enum TableClassificationType {
+    Hub,
+    Link,
 }
 
 #[derive(Deserialize, Debug)]
