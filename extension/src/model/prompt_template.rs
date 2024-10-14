@@ -44,9 +44,11 @@ impl PromptTemplate {
 
             Example Output 1)
             {
-              "Classification": "Hub",
-              "Confidence Value": 0.92,
-              "Reason": "The 'customer_id' column is a primary key, and the table contains attributes likely describing a core entity, making it suitable for a Hub classification."
+              "Table Classification": {
+                "Classification": "Hub",
+                "Confidence Value": 0.92,
+                "Reason": "The 'customer_id' column is a primary key, and the table contains attributes likely describing a core entity, making it suitable for a Hub classification."
+              }
             }
 
             Example Input 2)
@@ -63,9 +65,11 @@ impl PromptTemplate {
 
             Example Output 2)
             {
-              "Classification": "Link",
-              "Confidence Value": 0.85,
-              "Reason": "The 'order_id' and 'product_id' columns suggest a relationship between multiple tables, making this table a strong candidate for a Link classification."
+              "Table Classification": {
+                "Classification": "Link",
+                "Confidence Value": 0.85,
+                "Reason": "The 'order_id' and 'product_id' columns suggest a relationship between multiple tables, making this table a strong candidate for a Link classification."
+              }
             }
 
             Now, based on the instructions and examples above, please generate the appropriate JSON output only for the following JSON Source Table Object.  {hints}
