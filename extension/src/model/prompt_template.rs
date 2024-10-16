@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub enum PromptTemplate {
-    HubLinkClassification,
+    BKComponentIdentification,
     BKIdentification,
     BKName,
     DescriptorSensitive,
@@ -9,49 +9,83 @@ pub enum PromptTemplate {
 impl PromptTemplate {
   pub fn template(&self) -> &str {
       match self {
-          PromptTemplate::HubLinkClassification => r#"
-            Task Title: Hub and Link Classification in JSON Source Table Object
+          PromptTemplate::BKComponentIdentification => r#"
+            Task Title: Business Key Component Identification by Column in JSON Source Table Object
 
-            You have a JSON Source Table Object that includes the schema name, table name, and detailed column information. Your responses to requested tasks will be used to help classify the source table as part of the data vault structure.
+            You have a JSON Source Table Object that includes the schema name, table name, and detailed column information. Your task is to evaluate if a specified column is a business key component and, if so, how likely it is. The results of your evaluations will be used to create downstream data vault structures.
+
+            A business key component is an attribute that forms part of a business key, which may be either a component of a composite key or a single key that uniquely identifies the record set. Additionally, there may be multiple business keys within one table.
 
             Requested Task:
 
-            Classify the source table as either a Hub or Link structure based on the column details provided. Additionally, provide a confidence value for your classification.
+            Determine whether the specified column, identified by its column number (“column no”), is likely to represent a business key or a component of a business key.
+
+            Request Details:
+
+            If the column is a primary key, as indicated in the comments or column details, assume it is a business key component. However, this does not exclude the possibility of other business key components within the table, but it may reduce the likelihood of the specified column being the only business key.
 
             Confidence Value:
 
-            Provide a score between 0 and 1, rounded to two decimal places, representing your confidence in the classification. A value of 0.80 or higher is considered reasonably confident.
+            Provide a confidence score between 0 and 1, rounded to two decimal places, representing your confidence in the likelihood that the column is a business key component. A value of 0.80 or higher is considered reasonably confident.
 
             Reason:
 
-            Indicate why you made the classification decision you did.
+            Indicate why you made the decision you did.
 
             Output:
 
             Ensure the output conforms to the format shown in the examples below.
 
             Example Input 1)
+            JSON Source Table Object:
             {
               "Schema Name": "public",
               "Table Name": "customer",
               "Column Details": [
-                "Column No: 1 Named: customer_id of type: uuid And is a primary key. Column Comments: NA",
+                "Column No: 1 Named: customer_id of type: uuid And is a primary key.  Column Comments: NA",
                 "Column No: 2 Named: city of type: character varying(255) Column Comments: NA",
                 "Column No: 3 Named: state of type: character(2) Column Comments: NA",
                 "Column No: 4 Named: zip of type: character varying(10) Column Comments: NA"
               ]
             }
 
+            Column No: 1
+
             Example Output 1)
             {
-              "Table Classification": {
-                "Classification": "Hub",
-                "Confidence Value": 0.92,
-                "Reason": "The 'customer_id' column is a primary key, and the table contains attributes likely describing a core entity, making it suitable for a Hub classification."
+              "Business Key Component Identification": {
+                "Is Business Key Component": true,
+                "Confidence Value": 0.95,
+                "Reason": "The 'customer_id' column is designated as the primary key, which is typically the best candidate for a business key component in the 'customer' table."
               }
             }
 
             Example Input 2)
+            JSON Source Table Object:
+            {
+              "Schema Name": "sales",
+              "Table Name": "order_details",
+              "Column Details": [
+                "Column No: 1 Named: id of type: integer Column Comments: NA",
+                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
+                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
+                "Column No: 4 Named: order_date of type: date Column Comments: NA"
+              ]
+            }
+
+            Column No: 1
+
+            Example Output 2)
+            {
+              "Business Key Component Identification": {
+                "Is Business Key Component": true,
+                "Confidence Value": 0.75,
+                "Reason": "Although 'id' is not explicitly marked as a primary key, it is likely to uniquely identify each order detail, making it a strong candidate for a business key component."
+              }
+            }
+
+            Example Input 3)
+            JSON Source Table Object:
             {
               "Schema Name": "sales",
               "Table Name": "order_details",
@@ -63,19 +97,98 @@ impl PromptTemplate {
               ]
             }
 
-            Example Output 2)
+            Column No: 1
+
+            Example Output 3)
             {
-              "Table Classification": {
-                "Classification": "Link",
+              "Business Key Component Identification": {
+                "Is Business Key Component": true,
                 "Confidence Value": 0.85,
-                "Reason": "The 'order_id' and 'product_id' columns suggest a relationship between multiple tables, making this table a strong candidate for a Link classification."
+                "Reason": "The 'order_id' column likely represents the primary identifier for each order within the 'order_details' table. Although it is not explicitly marked as a primary key, 'order_id' is a common identifier for business entities, making it a strong candidate for a business key component."
               }
             }
 
-            Now, based on the instructions and examples above, please generate the appropriate JSON output only for the following JSON Source Table Object.  {hints}
+            Example Input 4)
+            JSON Source Table Object:
+            {
+              "Schema Name": "sales",
+              "Table Name": "order_details",
+              "Column Details": [
+                "Column No: 1 Named: order_id of type: integer Column Comments: NA",
+                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
+                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
+                "Column No: 4 Named: order_date of type: date Column Comments: NA"
+              ]
+            }
+
+            Column No: 2
+
+
+            Example Output 4)
+            {
+              "Business Key Component Identification": {
+                "Is Business Key Component": true,
+                "Confidence Value": 0.80,
+                "Reason": "'product_id' likely represents a key component that helps identify specific products associated with the order. It is not the sole key but may serve as part of a composite business key alongside 'order_id'."
+              }
+            }
+
+
+            Example Input 5)
+            JSON Source Table Object:
+            {
+              "Schema Name": "sales",
+              "Table Name": "order_details",
+              "Column Details": [
+                "Column No: 1 Named: order_id of type: integer Column Comments: NA",
+                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
+                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
+                "Column No: 4 Named: order_date of type: date Column Comments: NA"
+              ]
+            }
+
+            Column No: 3
+
+            Example Output 5)
+            {
+              "Business Key Component Identification": {
+                "Is Business Key Component": false,
+                "Confidence Value": 0.30,
+                "Reason": "The 'quantity' column represents a numeric value related to the number of products in the order, but it does not uniquely identify the record. It is unlikely to serve as a business key component."
+              }
+            }
+
+
+            Example Input 6)
+            JSON Source Table Object:
+            {
+              "Schema Name": "sales",
+              "Table Name": "order_details",
+              "Column Details": [
+                "Column No: 1 Named: order_id of type: integer Column Comments: NA",
+                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
+                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
+                "Column No: 4 Named: order_date of type: date Column Comments: NA"
+              ]
+            }
+
+            Column No: 4
+
+            Example Output 6)
+            {
+              "Business Key Component Identification": {
+                "Is Business Key Component": false,
+                "Confidence Value": 0.40,
+                "Reason": "'order_date' represents the date on which the order was placed. While it provides important context, it is not unique to the record and is therefore unlikely to serve as a business key component."
+              }
+            }
+
+            Now, based on the instructions and examples above, please generate the JSON output for the following input. {hints}
 
             JSON Source Table Object: {new_json}
-          "#,
+
+            Column No: {column_no}
+            "#,
           PromptTemplate::BKIdentification => r#"
             Task Title: Business Key Identification in JSON Source Table Object
 

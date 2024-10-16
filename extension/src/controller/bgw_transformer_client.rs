@@ -46,6 +46,8 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                                                                         table_column_links: table_column_links, 
                                                                                         table_details: table_details
                                                                                     };
+
+                        log!("Source Table Prompt:{:?}", source_table_prompt);
                         v_source_table_prompts.push(source_table_prompt)
                     }
                     Ok(v_source_table_prompts)
@@ -54,10 +56,11 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
             // Get Prompts for Processing
             let v_source_table_prompts = result.unwrap_or_else(|e| panic!("got an error: {}", e));
-
+            log!("Source Table Prompts:{:?}", v_source_table_prompts);
+            
             // Process Each Prompt
             for source_table_prompt in v_source_table_prompts {
-                
+                log!("Starting for loop.");
                 let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Details to pretty string");
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
@@ -65,44 +68,97 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 let columns = extract_column_numbers(&table_details_json_str);
 
-                // Table as Hub or Link Classification
-                let mut generation_json_table_classification: Option<serde_json::Value> = None;
-                let mut table_classification_opt: Option<TableClassification> = None;
-                let mut retries = 0;
-                let mut hints = String::new();
-                while retries < MAX_TRANSFORMER_RETRIES {
-                    runtime.block_on(async {
-                        // Get Generation
-                        generation_json_table_classification = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::HubLinkClassification, &0, &hints).await {
-                            Ok(response_json) => {
-                                Some(response_json)
-                            },
-                            Err(e) => {
-                                log!("Error in transformer request, malformed or timed out: {}", e);
-                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
-                                None
-                            }
-                        };
-                    });
+                // // Table Business Key Component Identification
+                // let mut generation_json_business_key_component_identification: Option<serde_json::Value> = None;
+                // let mut business_key_component_identification: HashMap<&u32, BusinessKeyComponentIdentification> = HashMap::new();
 
-                    if generation_json_table_classification.is_none() {
-                        retries += 1;
-                        continue; // Skip to the next iteration
-                    }
+                // for column in &columns {
+                //     let mut retries = 0;
+                //     let mut hints = String::new();
 
-                    match serde_json::from_value::<TableClassification>(generation_json_table_classification.clone().unwrap()) {
-                        Ok(bk) => {
-                            table_classification_opt = Some(bk);
-                            log!("Table Classification {:?}", table_classification_opt);
-                            break; // Successfully Decoded
-                        }
-                        Err(e) => {
-                            log!("Error JSON JSON Structure not of type IdentifiedBusinessKey: {}", e);
-                            hints = format!("Hint: Please ensure the correct JSON key pair structure is given.  Previously you gave a response but it errored.  Error: {e}. Please try again.");
-                        }
-                    }
-                    retries += 1;
-                }
+                //     while retries < MAX_TRANSFORMER_RETRIES {
+                //         runtime.block_on(async {
+                //             generation_json_business_key_component_identification = 
+                //                 match transformer_client::send_request(
+                //                     table_details_json_str.as_str(), 
+                //                     prompt_template::PromptTemplate::BKComponentIdentification, 
+                //                     column, 
+                //                     &hints).await {
+                //                 Ok(response_json) => {
+                                    
+                //                     let response_json_pretty = serde_json::to_string_pretty(&response_json)
+                //                                                                         .expect("Failed to convert Response JSON to Pretty String.");
+                                            
+                //                     log!("BK Component Identification Output: {response_json_pretty}");
+
+                //                     Some(response_json)
+                //                 },
+                //                 Err(e) => {
+                //                     log!("Error in transformer request, malformed or timed out: {}", e);
+                //                     hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+                //                     None
+                //                 }
+                //             };
+                //         });
+
+                //         if generation_json_business_key_component_identification.is_none() {
+                //             retries += 1;
+                //             continue; // Skip to the next iteration
+                //         }
+
+                //         match serde_json::from_value::<BusinessKeyComponentIdentification>(generation_json_business_key_component_identification.clone().unwrap()) {
+                //             Ok(bki) => {
+                //                 // business_key_name_opt = Some(des);
+                //                 log!("Successfully Decoded: {:?}", bki);
+                //                 business_key_component_identification.insert(column, bki);
+                //                 break; // Successfully Decoded
+                //             }
+                //             Err(e) => {
+                //                 log!("Error JSON JSON Structure not of type DescriptorSensitive: {}", e);
+                //             }
+                //         }
+
+                //         retries += 1;
+                //         log!("{retries}");
+                //     }
+                // }
+
+                
+                // let mut retries = 0;
+                // let mut hints = String::new();
+                // while retries < MAX_TRANSFORMER_RETRIES {
+                //     runtime.block_on(async {
+                //         // Get Generation
+                //         generation_json_table_classification = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::HubLinkClassification, &0, &hints).await {
+                //             Ok(response_json) => {
+                //                 Some(response_json)
+                //             },
+                //             Err(e) => {
+                //                 log!("Error in transformer request, malformed or timed out: {}", e);
+                //                 hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+                //                 None
+                //             }
+                //         };
+                //     });
+
+                //     if generation_json_table_classification.is_none() {
+                //         retries += 1;
+                //         continue; // Skip to the next iteration
+                //     }
+
+                //     match serde_json::from_value::<TableClassification>(generation_json_table_classification.clone().unwrap()) {
+                //         Ok(bk) => {
+                //             table_classification_opt = Some(bk);
+                //             log!("Table Classification {:?}", table_classification_opt);
+                //             break; // Successfully Decoded
+                //         }
+                //         Err(e) => {
+                //             log!("Error JSON JSON Structure not of type IdentifiedBusinessKey: {}", e);
+                //             hints = format!("Hint: Please ensure the correct JSON key pair structure is given.  Previously you gave a response but it errored.  Error: {e}. Please try again.");
+                //         }
+                //     }
+                //     retries += 1;
+                // }
 
 
 
@@ -376,6 +432,22 @@ struct TableClassificationValues {
 enum TableClassificationType {
     Hub,
     Link,
+}
+
+#[derive(Deserialize, Debug)]
+struct BusinessKeyComponentIdentification {
+    #[serde(rename = "Business Key Component Identification")]
+    business_key_component_identification: BusinessKeyComponentIdentificationValues,
+}
+
+#[derive(Deserialize, Debug)]
+struct BusinessKeyComponentIdentificationValues {
+    #[serde(rename = "Is Business Key Component")]
+    is_business_key_component: bool,
+    #[serde(rename = "Confidence Value")]
+    confidence_value: f64,
+    #[serde(rename = "Reason")]
+    reason: String,
 }
 
 #[derive(Deserialize, Debug)]
