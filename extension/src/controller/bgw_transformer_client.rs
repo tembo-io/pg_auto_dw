@@ -54,11 +54,10 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
             // Get Prompts for Processing
             let v_source_table_prompts = result.unwrap_or_else(|e| panic!("got an error: {}", e));
-            log!("Source Table Prompts:{:?}", v_source_table_prompts);
             
             // Process Each Prompt
             for source_table_prompt in v_source_table_prompts {
-                log!("Starting for loop.");
+                log!("Starting Loop for Table Processing.");
                 let table_details_json_str = serde_json::to_string_pretty(&source_table_prompt.table_details).expect("Failed to convert JSON Table Details to pretty string");
 
                 let table_column_link_json_str = serde_json::to_string_pretty(&source_table_prompt.table_column_links).expect("Failed to convert JSON Column Links to pretty string");
@@ -68,8 +67,11 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                 // Table Business Key Component Identification
                 let mut generation_json_business_key_component_identification: Option<serde_json::Value> = None;
+                let mut generation_json_business_key_name: Option<serde_json::Value> = None;
                 let mut business_key_component_identification: HashMap<&u32, BusinessKeyComponentIdentification> = HashMap::new();
+                let mut business_key_name: HashMap<&u32, BusinessKeyName> = HashMap::new();
 
+                // Evaluate Attributes
                 for column in &columns {
                     let mut retries = 0;
                     let mut hints = String::new();
@@ -83,10 +85,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                     column, 
                                     &hints).await {
                                 Ok(response_json) => {
-                                    
-                                    let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                                                                        .expect("Failed to convert Response JSON to Pretty String.");
-
                                     Some(response_json)
                                 },
                                 Err(e) => {
@@ -112,11 +110,58 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                             }
                         }
                         retries += 1;
-                        log!("{retries}");
+                        log!("Transformer Retry No: {retries}");
                     }
                 }
 
-                log!("BK Component Identification: {:?}", business_key_component_identification);
+                // Generate Name if Identified as BK
+                for column in &columns {
+                    let mut retries = 0;
+                    let mut hints = String::new();
+
+                    match business_key_component_identification.get(column) {
+                        Some(bkci) => {
+                            if bkci.business_key_component_identification.is_business_key_component {
+                                // Identify BK Name
+                                while retries < MAX_TRANSFORMER_RETRIES {
+                                    runtime.block_on(async {
+                                        generation_json_business_key_name = 
+                                          match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKName, &column, &hints).await {
+                                            Ok(response_json) => {
+                                                Some(response_json)
+                                            },
+                                            Err(e) => {
+                                                log!("Error in transformer request, malformed or timed out: {}", e);
+                                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
+                                                None
+                                            }
+                                          };
+                                    });
+
+                                    if generation_json_business_key_name.is_none() {
+                                        retries += 1;
+                                        continue; // Skip to the next iteration
+                                    }
+
+                                    match serde_json::from_value::<BusinessKeyName>(generation_json_business_key_name.clone().unwrap()) {
+                                        Ok(bkn) => {
+                                            business_key_name.insert(column, bkn);
+                                            break; // Successfully Decoded
+                                        }
+                                        Err(e) => {
+                                            log!("Error JSON JSON Structure not of type BusinessKeyName: {}", e);
+                                        }
+                                    }
+
+                                    retries += 1;
+                                }
+                            } else {
+                                continue; // Go do next column
+                            }
+                        }
+                        None => panic!("All columns should have been checked for business keys.  No BusinessKeyComponetIdentification Struct Found."),
+                    }
+                }
 
                 // Identity BK Ordinal Location
                 let mut generation_json_bk_identification: Option<serde_json::Value> = None;
@@ -366,22 +411,6 @@ fn extract_column_numbers(json_str: &str) -> Vec<u32> {
     re.captures_iter(json_str)
         .filter_map(|caps| caps.get(1).map(|m| m.as_str().parse::<u32>().unwrap()))
         .collect()
-}
-
-#[derive(Deserialize, Debug)]
-struct TableClassification {
-    #[serde(rename = "Table Classification")]
-    categorized_table: TableClassificationValues,
-}
-
-#[derive(Deserialize, Debug)]
-struct TableClassificationValues {
-    #[serde(rename = "Classification")]
-    classification: TableClassificationType,
-    #[serde(rename = "Confidence Value")]
-    confidence_value: f64,
-    #[serde(rename = "Reason")]
-    reason: String,
 }
 
 #[derive(Deserialize, Debug)]
