@@ -1,7 +1,6 @@
 #[derive(Debug)]
 pub enum PromptTemplate {
     BKComponentIdentification,
-    BKIdentification,
     BKName,
     DescriptorSensitive,
 }
@@ -190,72 +189,6 @@ impl PromptTemplate {
             JSON Source Table Object: {new_json}
 
             Column No: {column_no}
-            "#,
-          PromptTemplate::BKIdentification => r#"
-            Task Title: Business Key Identification in JSON Source Table Object
-
-            You have a JSON Source Table Object that includes the schema name, table name, and detailed column information. Your responses to requested tasks will be used to help create downstream data vault tables.
-
-            Requested Task: Identify the column number most likely to serve as the business key. Return only one column in JSON format as specified below.
-
-
-            Request Details:
-            If the column is a primary key, assume it is the business key. If not, choose the column most likely to uniquely identify the table’s entity. Additionally, provide a confidence value for your selection.
-
-            Confidence Value: Provide a score between 0 and 1, rounded to two decimal places, representing your confidence in the selected column. A value of 0.80 or higher is considered reasonably confident.
-
-
-            Reason: Indicate why you made the decision you did.
-
-            Output: Ensure the output conforms to the format shown in the examples below.
-
-            Example Input 1)
-            JSON Source Table Object:
-            {
-              "Schema Name": "public",
-              "Table Name": "customer",
-              "Column Details": [
-                "Column No: 1 Named: customer_id of type: uuid And is a primary key.  Column Comments: NA",
-                "Column No: 2 Named: city of type: character varying(255) Column Comments: NA",
-                "Column No: 3 Named: state of type: character(2) Column Comments: NA",
-                "Column No: 4 Named: zip of type: character varying(10) Column Comments: NA"
-              ]
-            }
-
-            Example Output 1)
-            {
-              "Identified Business Key": {
-                "Column No": 1,
-                "Confidence Value": 0.95,
-                "Reason": "The 'customer_id' column is designated as the primary key, which is typically the best candidate for a business key."
-              }
-            }
-
-            Example Input 2)
-            JSON Source Table Object:
-            {
-              "Schema Name": "sales",
-              "Table Name": "order_details",
-              "Column Details": [
-                "Column No: 1 Named: order_id of type: integer Column Comments: NA",
-                "Column No: 2 Named: product_id of type: integer Column Comments: NA",
-                "Column No: 3 Named: quantity of type: integer Column Comments: NA",
-                "Column No: 4 Named: order_date of type: date Column Comments: NA"
-              ]
-            }
-
-            Example Output 2)
-            {
-              "Identified Business Key": {
-                "Column No": 1,
-                "Confidence Value": 0.75,
-                "Reason": "Although 'order_id' is not explicitly marked as a primary key, it is likely to uniquely identify each order, making it a strong candidate for the business key."
-              }
-            }
-
-            Now, based on the instructions and examples above, please generate the JSON output for the following input. {hints}
-
-            JSON Source Table Object: {new_json}
             "#,
           PromptTemplate::BKName => r#"
             Task Title: Business Key Naming in JSON Source Table Object with specified Column

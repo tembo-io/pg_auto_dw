@@ -347,22 +347,6 @@ struct BusinessKeyComponentIdentificationValues {
 }
 
 #[derive(Deserialize, Debug)]
-struct IdentifiedBusinessKey {
-    #[serde(rename = "Identified Business Key")]
-    identified_business_key_values: IdentifiedBusinessKeyValues,
-}
-
-#[derive(Deserialize, Debug)]
-struct IdentifiedBusinessKeyValues {
-    #[serde(rename = "Column No")]
-    column_no: u32,
-    #[serde(rename = "Confidence Value")]
-    confidence_value: f64,
-    #[serde(rename = "Reason")]
-    reason: String,
-}
-
-#[derive(Deserialize, Debug)]
 struct BusinessKeyName {
     #[serde(rename = "Business Key Name")]
     business_key_name_values: BusinessKeyNameValues,
