@@ -350,11 +350,17 @@ pub fn insert_into_build_call(
 			t.category,
 			t.model_name,
 			MAX(
-			CASE
-				WHEN t.category = 'Business Key Part' AND t.confidence_score < cl.value THEN 1
-				ELSE 0 				  
-			END
-			) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold
+				CASE
+					WHEN t.category = 'Business Key Part' AND t.confidence_score < cl.value THEN 1
+					ELSE 0 				  
+				END
+			) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold,
+			SUM(
+				CASE
+					WHEN t.category = 'Business Key Part' THEN 1
+					ELSE 0 				  
+				END
+			) OVER (PARTITION BY s.schema_name, s.table_name) AS bkp_cnt
 		FROM auto_dw.source_objects AS s
 		JOIN confidence_level AS cl ON true
 		LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
@@ -364,9 +370,15 @@ pub fn insert_into_build_call(
 		SELECT *,
 				CASE
 					WHEN confidence_score IS NULL THEN 'Queued for Processing'
-					WHEN category = 'Business Key Part' AND confidence_score >= cl.value THEN 'Ready to Deploy'
-					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 THEN 'Ready to Deploy'
-					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 THEN 'Ready to Deploy - Awaiting Business Key (BK)'
+					-- Links
+					WHEN category = 'Business Key Part' AND confidence_score >= cl.value 					AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Link Implementation'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 	AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Link Implementation'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 	AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Business Key (BK), Awaiting Link Implementation'
+					-- Hubs
+					WHEN category = 'Business Key Part' AND confidence_score >= cl.value 										THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 						THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 						THEN 'Ready to Deploy - Awaiting Business Key (BK)'
+		
 					ELSE 'Requires Attention'
 				END AS status,
 				CASE 
@@ -456,7 +468,13 @@ pub fn source_column(accepted_transformer_confidence_level: &str) -> String {
 					WHEN t.category = 'Business Key Part' AND t.confidence_score < cl.value THEN 1
 					ELSE 0 				  
 				END
-				) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold
+				) OVER (PARTITION BY s.schema_name, s.table_name) AS bk_hold,
+			SUM(
+				CASE
+					WHEN t.category = 'Business Key Part' THEN 1
+					ELSE 0 				  
+				END
+			) OVER (PARTITION BY s.schema_name, s.table_name) AS bkp_cnt
 			FROM auto_dw.source_objects AS s
 			JOIN confidence_level AS cl ON true
 			LEFT JOIN source_object_transformation_latest AS t ON s.pk_source_objects = t.fk_source_objects
@@ -465,12 +483,18 @@ pub fn source_column(accepted_transformer_confidence_level: &str) -> String {
 		source_object AS (
 			SELECT *,
 					CASE
-						WHEN confidence_score IS NULL THEN 'Queued for Processing'
-						WHEN category = 'Business Key Part' AND confidence_score >= cl.value THEN 'Ready to Deploy'
-						WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 THEN 'Ready to Deploy'
-						WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 THEN 'Ready to Deploy - Awaiting Business Key (BK)'
-						ELSE 'Requires Attention'
-					END AS status,
+					WHEN confidence_score IS NULL THEN 'Queued for Processing'
+					-- Links
+					WHEN category = 'Business Key Part' AND confidence_score >= cl.value 					AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Link Implementation'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 	AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Link Implementation'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 	AND bkp_cnt > 1 	THEN 'Ready to Deploy - Awaiting Business Key (BK), Awaiting Link Implementation'
+					-- Hubs
+					WHEN category = 'Business Key Part' AND confidence_score >= cl.value 										THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 0 						THEN 'Ready to Deploy'
+					WHEN category <> 'Business Key Part' AND confidence_score >= cl.value AND bk_hold = 1 						THEN 'Ready to Deploy - Awaiting Business Key (BK)'
+		
+					ELSE 'Requires Attention'
+				END AS status,
 					CASE 
 						WHEN confidence_score IS NOT NULL THEN CONCAT((confidence_score * 100)::INT::TEXT, '%')
 						ELSE '-'

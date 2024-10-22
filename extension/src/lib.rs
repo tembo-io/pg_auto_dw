@@ -16,7 +16,6 @@ use model::queries;
 #[pg_extern(name="go")]
 fn go_default() -> String {
     let accepted_transformer_confidence_level: String = 
-        // utility::guc::get_guc(guc::PgAutoDWGuc::AcceptedTransformerConfidenceLevel).unwrap();
         utility::guc::get_guc(guc::PgAutoDWGuc::AcceptedTransformerConfidenceLevel)
             .unwrap_or_else(|| {
                 error!("GUC: Unable to obtain parameter \"pg_auto_dw.accepted_transformer_confidence_level.\"");

@@ -23,7 +23,7 @@ impl PromptTemplate {
 
             If the column is a primary key, as indicated in the comments or column details, assume it is a business key component. However, this does not exclude the possibility of other business key components within the table, but it may reduce the likelihood of the specified column being the only business key.
 
-            If the specified column could be categorized as an email, only consider it a business key component if there are no other attributes in the table that could reasonably serve as a business key component.
+            If the specified column could be categorized as an email or username, only consider it a business key component if there are no other attributes in the table that could reasonably serve as a business key component.
 
             Confidence Value:
 
