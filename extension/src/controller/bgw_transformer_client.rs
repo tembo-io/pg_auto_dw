@@ -163,94 +163,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                     }
                 }
 
-                // Identity BK Ordinal Location
-                let mut generation_json_bk_identification: Option<serde_json::Value> = None;
-                let mut identified_business_key_opt: Option<IdentifiedBusinessKey> = None;
-                let mut retries = 0;
-                let mut hints = String::new();
-                while retries < MAX_TRANSFORMER_RETRIES {
-                    runtime.block_on(async {
-                        // Get Generation
-                        generation_json_bk_identification = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKIdentification, &0, &hints).await {
-                            Ok(response_json) => {
-                                Some(response_json)
-                            },
-                            Err(e) => {
-                                log!("Error in transformer request, malformed or timed out: {}", e);
-                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
-                                None
-                            }
-                        };
-                    });
-
-                    if generation_json_bk_identification.is_none() {
-                        retries += 1;
-                        continue; // Skip to the next iteration
-                    }
-
-                    match serde_json::from_value::<IdentifiedBusinessKey>(generation_json_bk_identification.clone().unwrap()) {
-                        Ok(bk) => {
-                            identified_business_key_opt = Some(bk);
-                            break; // Successfully Decoded
-                        }
-                        Err(e) => {
-                            log!("Error JSON JSON Structure not of type IdentifiedBusinessKey: {}", e);
-                            hints = format!("Hint: Please ensure the correct JSON key pair structure is given.  Previously you gave a response but it errored.  Error: {e}. Please try again.");
-                        }
-                    }
-                    retries += 1;
-                }
-
-                let identified_business_key = match identified_business_key_opt {
-                    Some(bk) => bk,
-                    None => panic!("Failed to identify business key after {} retries", retries),
-                };
-
-                // Identity BK Name
-                let mut generation_json_bk_name: Option<serde_json::Value> = None;
-                let mut business_key_name_opt: Option<BusinessKeyName> = None;
-                let mut retries = 0;
-                let mut hints = String::new();
-                while retries < MAX_TRANSFORMER_RETRIES {
-                    runtime.block_on(async {
-                        // Get Generation
-                        generation_json_bk_name = match transformer_client::send_request(table_details_json_str.as_str(), prompt_template::PromptTemplate::BKName, &0, &hints).await {
-                            Ok(response_json) => {
-                                
-                                // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                //                                                     .expect("Failed to convert Response JSON to Pretty String.");
-                                Some(response_json)
-                            },
-                            Err(e) => {
-                                log!("Error in transformer request, malformed or timed out: {}", e);
-                                hints = format!("Hint: Please ensure you provide a JSON response only.  This is your {} attempt.", retries + 1);
-                                None
-                            }
-                        };
-                    });
-
-                    if generation_json_bk_name.is_none() {
-                        retries += 1;
-                        continue; // Skip to the next iteration
-                    }
-
-                    match serde_json::from_value::<BusinessKeyName>(generation_json_bk_name.clone().unwrap()) {
-                        Ok(bk) => {
-                            business_key_name_opt = Some(bk);
-                            break; // Successfully Decoded
-                        }
-                        Err(e) => {
-                            log!("Error JSON JSON Structure not of type BusinessKeyName: {}", e);
-                        }
-                    }
-                    retries += 1;
-                }
-
-                let business_key_name = match business_key_name_opt {
-                    Some(bk) => bk,
-                    None => panic!("Failed to identify business key name after {} retries", retries),
-                };
-
                 // Identity Descriptor - Sensitive
                 // let mut generation_json_descriptors_sensitive: HashMap<&u32, Option<serde_json::Value>> = HashMap::new();
                 let mut descriptors_sensitive: HashMap<&u32, DescriptorSensitive> = HashMap::new();
@@ -269,10 +181,6 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
                                     column, 
                                     &hints).await {
                                 Ok(response_json) => {
-                                    
-                                    // let response_json_pretty = serde_json::to_string_pretty(&response_json)
-                                    //                                                     .expect("Failed to convert Response JSON to Pretty String.");
-
                                     Some(response_json)
                                 },
                                 Err(e) => {
@@ -313,67 +221,70 @@ pub extern "C" fn background_worker_transformer_client(_arg: pg_sys::Datum) {
 
                     let last = {index == table_column_links.column_links.len() - 1};
 
-                    if column == &identified_business_key.identified_business_key_values.column_no {
+                    match (business_key_component_identification.get(column), business_key_name.get(column)) {
+                        (Some(business_key_component_identification), Some(business_key_name)) => {
+                            let category = "Business Key Part";
+                            // Calculate the overall confidence score by taking the minimum of the confidence values
+                            // for the identified business key and the business key name. This approach is chosen to 
+                            // ensure that the overall confidence reflects the weakest link, avoiding inflation of 
+                            // the confidence score when one value is significantly lower than the other.
+                            let confidence_score = 
+                                business_key_component_identification.business_key_component_identification.confidence_value.min(
+                                    business_key_name.business_key_name_values.confidence_value);
+                            let bk_name = &business_key_name.business_key_name_values.name;
+                            let bk_identified_reason = &business_key_component_identification.business_key_component_identification.reason;
+                            let bk_name_reason = &business_key_name.business_key_name_values.reason;
+                            let reason = format!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
+                            let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                            let model_name = model_name_owned.as_str();
 
-                        let category = "Business Key Part";
-                        // Calculate the overall confidence score by taking the minimum of the confidence values
-                        // for the identified business key and the business key name. This approach is chosen to 
-                        // ensure that the overall confidence reflects the weakest link, avoiding inflation of 
-                        // the confidence score when one value is significantly lower than the other.
-                        let confidence_score = identified_business_key.identified_business_key_values.confidence_value.min(business_key_name.business_key_name_values.confidence_value);
-                        let bk_name = &business_key_name.business_key_name_values.name;
-                        let bk_identified_reason = &identified_business_key.identified_business_key_values.reason;
-                        let bk_name_reason = &business_key_name.business_key_name_values.reason;
-                        let reason = format!("BK Identified Reason: {}, BK Naming Reason: {}", bk_identified_reason, bk_name_reason);
-                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-                        let model_name = model_name_owned.as_str();
+                            let pk_source_objects: i32;
 
-                        let pk_source_objects: i32;   
-                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
-                            pk_source_objects = pk_source_objects_temp;
-                        } else {
-                            println!("No match found for column_ordinal_position: {}", column);
-                            panic!()
-                        }
-
-                        if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        }
-
-                    } else {
-
-                        let pk_source_objects: i32; 
-                        let mut category = "Descriptor";
-                        let mut confidence_score: f64 = 1.0;
-                        let bk_name = "NA";
-                        let mut reason = "Defaulted of category 'Descriptor' maintained.".to_string();
-                        let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
-                        let model_name = model_name_owned.as_str();
-                        
-
-                        if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
-                            pk_source_objects = pk_source_objects_temp;
-                        } else {
-                            println!("No match found for column_ordinal_position: {}", column);
-                            panic!()
-                        }
-                        
-                        if let Some(descriptor_sensitive) = descriptors_sensitive.get(&column) {
-                            if descriptor_sensitive.descriptor_sensitive_values.is_pii && (descriptor_sensitive.descriptor_sensitive_values.confidence_value > 0.5) {
-                                category = "Descriptor - Sensitive";
-                                confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
-                                reason = descriptor_sensitive.descriptor_sensitive_values.reason.clone();
+                            if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+                                pk_source_objects = pk_source_objects_temp;
+                            } else {
+                                println!("No match found for column_ordinal_position: {}", column);
+                                panic!()
                             }
-                        } else {
-                            log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+    
+                            if !last {
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+                            } else {
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+                            }
+        
                         }
-
-                        if !last {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
-                        } else {
-                            insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+                        _ => { // Not Identified as BKs
+                            let pk_source_objects: i32; 
+                            let mut category = "Descriptor";
+                            let mut confidence_score: f64 = 1.0;
+                            let bk_name = "NA";
+                            let mut reason = "Defaulted of category 'Descriptor' maintained.".to_string();
+                            let model_name_owned = guc::get_guc(guc::PgAutoDWGuc::Model).expect("MODEL GUC is not set.");
+                            let model_name = model_name_owned.as_str();
+                            
+                            if let Some(pk_source_objects_temp) = table_column_links.find_pk_source_objects(column.clone() as i32) {
+                                pk_source_objects = pk_source_objects_temp;
+                            } else {
+                                println!("No match found for column_ordinal_position: {}", column);
+                                panic!()
+                            }
+                            
+                            if let Some(descriptor_sensitive) = descriptors_sensitive.get(&column) {
+                                if descriptor_sensitive.descriptor_sensitive_values.is_pii && (descriptor_sensitive.descriptor_sensitive_values.confidence_value > 0.5) {
+                                    category = "Descriptor - Sensitive";
+                                    confidence_score = descriptor_sensitive.descriptor_sensitive_values.confidence_value;
+                                    reason = descriptor_sensitive.descriptor_sensitive_values.reason.clone();
+                                }
+                            } else {
+                                log!("Teseting Can't find a response for {} in Descriptors Sensitive Hashmap.", column);
+                            }
+    
+                            if !last {
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}'),", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+                            } else {
+                                insert_sql.push_str(&format!("({}, '{}', '{}', '{}', {}, '{}');", pk_source_objects, model_name, category, bk_name.replace(" ", "_"), confidence_score, reason.replace("'", "''")));
+                            }
                         }
                     }
                 }

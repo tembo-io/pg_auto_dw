@@ -24,6 +24,8 @@ impl PromptTemplate {
 
             If the column is a primary key, as indicated in the comments or column details, assume it is a business key component. However, this does not exclude the possibility of other business key components within the table, but it may reduce the likelihood of the specified column being the only business key.
 
+            If the specified column could be categorized as an email, only consider it a business key component if there are no other attributes in the table that could reasonably serve as a business key component.
+
             Confidence Value:
 
             Provide a confidence score between 0 and 1, rounded to two decimal places, representing your confidence in the likelihood that the column is a business key component. A value of 0.80 or higher is considered reasonably confident.
