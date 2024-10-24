@@ -17,6 +17,18 @@ pub struct DVSchema {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct LinkKey {
+    #[serde(rename = "ID")]
+    pub id: Uuid,
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(rename = "Business Keys")]
+    pub business_keys: Vec<BusinessKey>,
+    #[serde(rename = "Descriptors")]
+    pub descriptors: Vec<Descriptor>, // Commonly multiple descriptor values, but may also contain none
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BusinessKey {
     #[serde(rename = "ID")]
     pub id: Uuid,
@@ -25,7 +37,7 @@ pub struct BusinessKey {
     #[serde(rename = "Business Key Part Links")]
     pub business_key_part_links: Vec<BusinessKeyPartLink>,
     #[serde(rename = "Descriptors")]
-    pub descriptors: Vec<Descriptor>,
+    pub descriptors: Vec<Descriptor>, // Commonly multiple descriptor values, but may also contain none
 }
 
 #[derive(Serialize, Deserialize, Debug)]
